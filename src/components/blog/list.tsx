@@ -24,10 +24,9 @@ function paginate<T>(items: T[], currentPage: number, itemsPerPage: number) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   return items.slice(startIndex, startIndex + itemsPerPage);
 }
-
 export default function BlogList({ posts }: BlogsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 1;
+  const itemsPerPage = 5;
 
   const totalPages = useMemo(
     () => Math.ceil(posts.length / itemsPerPage),

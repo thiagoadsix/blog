@@ -4,42 +4,11 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 import { siteConfig } from "@/config/site";
+import { posts } from "#site/content";
+import { formatDate, sorPosts } from "@/lib/utils";
+import Link from "next/link";
 
-const mockBlogs = [
-  {
-    id: 1,
-    title: "First Blog Post",
-    description: "This is the first blog post.",
-    url: "https://example.com/first-blog-post",
-  },
-  {
-    id: 2,
-    title: "Second Blog Post",
-    description: "This is the second blog post.",
-    url: "https://example.com/second-blog-post",
-  },
-  {
-    id: 3,
-    title: "Third Blog Post",
-    description: "This is the third blog post.",
-    url: "https://example.com/third-blog-post",
-  },
-];
-
-const mockProjects = [
-  {
-    id: 1,
-    title: "Project One",
-    description: "Description for project one.",
-    imageUrl: "/project1.png",
-  },
-  {
-    id: 2,
-    title: "Project Two",
-    description: "Description for project two.",
-    imageUrl: "",
-  },
-];
+const projects: any[] = [];
 
 const Home = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,9 +17,11 @@ const Home = () => {
     setSearchTerm(event.target.value);
   };
 
-  const filteredBlogs = mockBlogs.filter((blog) =>
-    blog.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const sortedPosts = sorPosts(posts.filter((post) => post.published))
+    .slice(0, 3)
+    .filter((blog) =>
+      blog.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <main className="flex min-h-screen flex-col items-center">
@@ -84,22 +55,26 @@ const Home = () => {
         <section className="mb-8">
           <h2 className="text-3xl font-bold mb-4">Latest Projects</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mockProjects.map((project) => (
-              <div
-                key={project.id}
-                className="p-4 border rounded-lg shadow-sm hover:shadow-md"
-              >
-                <Image
-                  src={project.imageUrl}
-                  alt={project.title}
-                  width={400}
-                  height={200}
-                  className="rounded-lg mb-4"
-                />
-                <h3 className="text-2xl font-semibold">{project.title}</h3>
-                <p>{project.description}</p>
-              </div>
-            ))}
+            {projects.length > 0 ? (
+              projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="p-4 border rounded-lg shadow-sm hover:shadow-md"
+                >
+                  <Image
+                    src={project.imageUrl}
+                    alt={project.title}
+                    width={400}
+                    height={200}
+                    className="rounded-lg mb-4"
+                  />
+                  <h3 className="text-2xl font-semibold">{project.title}</h3>
+                  <p>{project.description}</p>
+                </div>
+              ))
+            ) : (
+              <h1>Very soon ...</h1>
+            )}
           </div>
         </section>
         <section className="mb-8">
@@ -112,14 +87,16 @@ const Home = () => {
             className="w-full p-2 mb-8 border rounded focus:outline-none focus:border-zinc-500"
           />
           <ul className="space-y-4">
-            {filteredBlogs.map((blog) => (
-              <li
-                key={blog.id}
-                className="p-4 border rounded-lg shadow-sm hover:shadow-md"
-              >
-                <h3 className="text-2xl font-semibold">{blog.title}</h3>
-                <p>{blog.description}</p>
-              </li>
+            {sortedPosts.map((blog) => (
+              <div key={blog.slug} className="border rounded p-4">
+                <Link href={`/blog/${blog.slug}`}>
+                  <h2 className="text-xl font-semibold mb-2 cursor-pointer">
+                    {blog.title}
+                  </h2>
+                </Link>
+                <p className="text-gray-600 mb-2">{blog.description}</p>
+                <p className="text-sm text-gray-500">{formatDate(blog.date)}</p>
+              </div>
             ))}
           </ul>
         </section>

@@ -9,11 +9,6 @@ export default async function BlogPage() {
   return (
     <Base>
       <h1 className="text-3xl font-bold mb-6">Blog</h1>
-      <input
-        type="text"
-        placeholder="Search blogs..."
-        className="w-full p-2 mb-4 border rounded focus:outline-none focus:border-zinc-500"
-      />
       {posts?.length > 0 ? (
         <BlogList posts={sortedPosts} />
       ) : (
