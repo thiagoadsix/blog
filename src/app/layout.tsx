@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? siteConfig.url),
 };
 
-export const viewPort: Viewport = {
+const viewPort: Viewport = {
   themeColor: [
     {
       media: "(prefers-color-scheme: light)",

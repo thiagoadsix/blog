@@ -24,7 +24,7 @@ interface BlogDetailPageProps {
   };
 }
 
-export async function getPostFromParams(params: BlogDetailPageProps["params"]) {
+async function getPostFromParams(params: BlogDetailPageProps["params"]) {
   const slug = params.slug.join("/");
   const post = posts.find((post) => post.slugAsParam === slug);
   return post;
