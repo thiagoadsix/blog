@@ -1,0 +1,65 @@
+./
+├── README.md
+├── components.json
+├── next-env.d.ts
+├── next.config.mjs
+├── package.json
+├── postcss.config.mjs
+├── project_structure.txt
+├── public
+│   ├── next.svg
+│   └── vercel.svg
+├── src
+│   ├── app
+│   │   ├── api
+│   │   │   └── og
+│   │   │       └── route.tsx
+│   │   ├── apple-icon.png
+│   │   ├── blog
+│   │   │   ├── [...slug]
+│   │   │   │   └── page.tsx
+│   │   │   ├── mock
+│   │   │   │   └── blogs.json
+│   │   │   └── page.tsx
+│   │   ├── content
+│   │   │   └── blog
+│   │   │       ├── code-block.mdx
+│   │   │       └── hello-world.mdx
+│   │   ├── favicon.ico.ico
+│   │   ├── globals.css
+│   │   ├── icon.png
+│   │   ├── icon1.png
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── assets
+│   │   └── fonts
+│   │       └── Inter Bold.ttf
+│   ├── components
+│   │   ├── base.tsx
+│   │   ├── blog
+│   │   │   └── list.tsx
+│   │   ├── callout.tsx
+│   │   ├── client
+│   │   │   └── back-button.tsx
+│   │   ├── header.tsx
+│   │   ├── mdx-components.tsx
+│   │   ├── theme-provider.tsx
+│   │   └── ui
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── mode-toggle.tsx
+│   │       ├── select.tsx
+│   │       └── table.tsx
+│   ├── config
+│   │   └── site.ts
+│   ├── lib
+│   │   ├── mdx.ts
+│   │   └── utils.ts
+│   └── styles
+│       └── mdx.css
+├── tailwind.config.ts
+├── tsconfig.json
+└── velite.config.ts
+
+20 directories, 43 files
