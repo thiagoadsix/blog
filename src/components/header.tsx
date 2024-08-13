@@ -7,14 +7,7 @@ export const Header = () => (
   <header className="w-full">
     <div className="max-w-screen-lg mx-auto flex justify-between items-center p-4">
       <div className="flex items-center">
-        <Image
-          src="/icon1.png"
-          alt="Icon"
-          width={40}
-          height={40}
-          style={{ borderRadius: 8 }}
-        />
-        <h1 className="ml-2 text-xl font-bold">{siteConfig.author}</h1>
+        <h1 className="text-xl font-bold">{siteConfig.author}</h1>
       </div>
       <div className="flex items-center space-x-4">
         <Link href="/">
