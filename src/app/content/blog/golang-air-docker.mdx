@@ -1,0 +1,248 @@
+---
+slug: golang-air-docker
+title: Golang Local Development with Live Reloading using Air and Docker Compose
+description: Learn how to set up a Golang development environment with live reloading using Air and Docker Compose, making your development process faster and more efficient.
+date: 2024-08-12
+published: true
+---
+
+# **Golang Local Development with Live Reloading using Air and Docker Compose**
+
+Briefly introduce the purpose of the article: setting up a Golang development environment that supports live reloading with Air and is containerized using Docker Compose.
+
+## **Prerequisites**
+
+- Mention the tools that need to be installed before proceeding:
+  - Golang (at least version 1.18+)
+  - Docker and Docker Compose
+  - air (installation instructions will be provided later)
+
+## **Project Setup**
+
+Create a new directory for your project and navigate into it:
+
+```bash
+mkdir golang-docker-air
+cd golang-docker-air
+```
+
+Initialize a new Go module:
+
+```go
+go mod init github.com/yourusername/golang-docker-air
+```
+
+Create a simple `main.go` file:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+```
+
+## **Installing Air**
+
+Use the following command to install **Air** for live reloading. This instruction works fine for Unix systems, you can look for more informations [here](https://github.com/air-verse/air) on **Air** documentation.
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/air-verse/air/master/install.sh | sh -s
+```
+
+## Configure Air
+
+Run `air init`, and will be created a file on root of your project called `.air.toml`.
+
+Now update **cmd** value property from **.air.toml** to:
+
+Before:
+
+```toml
+  cmd = "go build -o ./tmp/main ."
+```
+
+After:
+
+```toml
+  cmd = "go build -o ./tmp/main ./cmd/app/main.go"
+```
+
+Now, let's create a directory `cmd/app` on the root of the project, and move our `main.go` file to this new directory.
+
+## **Setting up Docker and Docker Compose**
+
+Create a **Dockerfile** to define the Go environment:
+
+```docker
+FROM golang:1.22.5
+# Set the working directory
+WORKDIR /app
+# Install air for hot reloading
+RUN go install github.com/air-verse/air@latest
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
+RUN go mod tidy && go mod verify
+# Copy the rest of the application code
+COPY . .
+# Install air configuration
+COPY .air.toml .air.toml
+# Command to run air for hot reloading
+CMD ["air"]
+```
+
+Create a **docker-compose.yaml** file to define the services:
+
+```docker
+services:
+	api:
+		build: .
+		env_file:
+			- .env
+		ports:
+			- "3000:3000"
+		volumes:
+			- .:/app
+			- /app/tmp
+		networks:
+			- backend
+
+volumes:
+	api_volume:
+networks:
+	backend:
+		driver: bridge
+```
+
+# Testing
+
+Now, let's add `chi` package to make the test, just to try to have something close to a real scenario.
+
+## Install chi package
+
+Run the following command below to install `chi` package to our project. Link from `chi` repository is [here](https://github.com/go-chi/chi).
+
+```go
+go get -u github.com/go-chi/chi/v5
+```
+
+## Update main file
+
+Now, let's just add the following code to our `main.go` file (**cmd/app/main.go**):
+
+```go
+package  main
+
+import (
+"fmt"
+"log"
+"net/http"
+
+"github.com/go-chi/chi/v5"
+)
+
+func  main() {
+	r  :=  chi.NewRouter()
+	fmt.Println("Server starting at http://localhost:3000")
+
+	err  :=  http.ListenAndServe(":3000", r)
+	if  err  !=  nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+```
+
+## Run docker compose
+
+Now, let's just run the following command on our terminal:
+
+```bash
+docker-compose up
+```
+
+And we'll have something like this:
+
+```bash
+
+[+] Building 0.0s (0/0)                                                                                                                                                                                        docker:desktop-linux
+[+] Running 2/2
+ ✔ Network golang-docker-air_backend  Created                                                                                                                                                                                  0.0s
+ ✔ Container golang-docker-air-api-1  Created                                                                                                                                                                                  0.1s
+Attaching to golang-docker-air-api-1
+golang-docker-air-api-1  |
+golang-docker-air-api-1  |   __    _   ___
+golang-docker-air-api-1  |  / /\  | | | |_)
+golang-docker-air-api-1  | /_/--\ |_| |_| \_ v1.52.3, built with Go go1.22.5
+golang-docker-air-api-1  |
+golang-docker-air-api-1  | watching .
+golang-docker-air-api-1  | watching cmd
+golang-docker-air-api-1  | watching cmd/app
+golang-docker-air-api-1  | !exclude tmp
+golang-docker-air-api-1  | building...
+golang-docker-air-api-1  | go: downloading github.com/go-chi/chi/v5 v5.1.0
+golang-docker-air-api-1  | running...
+golang-docker-air-api-1  | Server starting at http://localhost:3000
+```
+
+Now let's add a 🚀 at the and of our log message, just to show that our container will be reloaded:
+
+```go
+package  main
+
+import (
+"fmt"
+"log"
+"net/http"
+
+"github.com/go-chi/chi/v5"
+)
+
+func  main() {
+	r  :=  chi.NewRouter()
+	fmt.Println("Server starting at http://localhost:3000 🚀")
+
+	err  :=  http.ListenAndServe(":3000", r)
+	if  err  !=  nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+```
+
+This is our terminal:
+
+```bash
+[+] Building 0.0s (0/0) docker:desktop-linux
+[+] Running 2/2
+✔ Network golang-docker-air_backend Created 0.0s
+✔ Container golang-docker-air-api-1 Created 0.1s
+Attaching to golang-docker-air-api-1
+golang-docker-air-api-1 |
+golang-docker-air-api-1 | __ _ ___
+golang-docker-air-api-1 | / /\ | | | |_)
+golang-docker-air-api-1 | /_/--\ |_| |_| \_ v1.52.3, built with Go go1.22.5
+golang-docker-air-api-1 |
+golang-docker-air-api-1 | watching .
+golang-docker-air-api-1 | watching cmd
+golang-docker-air-api-1 | watching cmd/app
+golang-docker-air-api-1 | !exclude tmp
+golang-docker-air-api-1 | building...
+golang-docker-air-api-1 | go: downloading github.com/go-chi/chi/v5 v5.1.0
+golang-docker-air-api-1 | running...
+golang-docker-air-api-1 | Server starting at http://localhost:3000
+golang-docker-air-api-1 | cmd/app/main.go has changed
+golang-docker-air-api-1 | building...
+golang-docker-air-api-1 | running...
+golang-docker-air-api-1 | Server starting at http://localhost:3000 🚀
+```
+
+# **Conclusion**
+
+By following the steps in this guide, you've successfully set up a Golang development environment with live reloading using Air and Docker Compose. This setup streamlines your workflow, allowing you to focus on writing and testing your code without the need to restart your application manually.
+
+With the combination of Docker Compose and Air, you now have a flexible, containerized development environment that can be easily scaled or adapted to fit more complex applications. Whether you're building a simple API or a larger microservices architecture, this approach ensures your development process remains efficient and productive.
+
+Feel free to expand on this foundation by integrating other tools or services, exploring different Go packages, or customizing your Docker setup. The possibilities are vast, and this setup is just the beginning of what you can achieve with Go and Docker.
+
+Happy coding! 🚀
