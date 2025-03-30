@@ -11,14 +11,14 @@ import { MDXContent } from "@/components/mdx-components";
 import "@/styles/mdx.css";
 
 interface BlogDetailPageProps {
-  params: {
+  params: Promise<{
     slug: string[];
-  };
+  }>;
 }
 
-async function getPostFromParams(params: BlogDetailPageProps["params"]) {
-  const resolvedParams = await params;
-  const slug = resolvedParams.slug.join("/");
+async function getPostFromParams(paramsPromise: BlogDetailPageProps["params"]) {
+  const params = await paramsPromise;
+  const slug = params.slug.join("/");
   const post = posts.find((post) => post.slugAsParam === slug);
   return post;
 }
@@ -26,7 +26,8 @@ async function getPostFromParams(params: BlogDetailPageProps["params"]) {
 export async function generateMetadata(
   { params }: BlogDetailPageProps
 ): Promise<Metadata> {
-  const post = await getPostFromParams(await params);
+  const resolvedParams = await params;
+  const post = await getPostFromParams(Promise.resolve(resolvedParams));
 
   if (!post) {
     return {};
@@ -59,22 +60,20 @@ export async function generateMetadata(
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: [`/api/og?${ogSearchParams.toString()}}`],
+      images: [`/api/og?${ogSearchParams.toString()}`],
     },
   };
 }
 
-export async function generateStaticParams(): Promise<
-  BlogDetailPageProps["params"][]
-> {
+export function generateStaticParams(): { slug: string[]; }[] {
   return posts.map((post) => ({
     slug: post.slugAsParam.split("/"),
   }));
 }
 
 export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
-
-  const post = await getPostFromParams(await params);
+  const resolvedParams = await params;
+  const post = await getPostFromParams(Promise.resolve(resolvedParams));
 
   if (!post || !post.published) {
     notFound();
