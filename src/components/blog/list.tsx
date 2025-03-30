@@ -53,7 +53,7 @@ export default function BlogList({ posts }: BlogsListProps) {
                 {blog.title}
               </h2>
             </Link>
-            <p className="text-gray-600 mb-2">{blog.description}</p>
+            <p className="text-gray-200 mb-2">{blog.description}</p>
             <ClientOnlyDate date={blog.date} />
           </div>
         ))}
