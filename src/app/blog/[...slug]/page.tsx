@@ -1,22 +1,14 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Base } from "@/components/base";
 import { posts } from "#site/content";
-import { MDXContent } from "@/components/mdx-components";
-import { BackButton } from "@/components/client/back-button";
-import { formatDate } from "@/lib/utils";
-
-import "@/styles/mdx.css";
-import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
-type Blog = {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-};
+import { BlogHeader } from "@/components/blog/header";
+import { Base } from "@/components/base";
+import { MDXContent } from "@/components/mdx-components";
+
+import "@/styles/mdx.css";
 
 interface BlogDetailPageProps {
   params: {
@@ -25,15 +17,16 @@ interface BlogDetailPageProps {
 }
 
 async function getPostFromParams(params: BlogDetailPageProps["params"]) {
-  const slug = params.slug.join("/");
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug.join("/");
   const post = posts.find((post) => post.slugAsParam === slug);
   return post;
 }
 
-export async function generateMetadata({
-  params,
-}: BlogDetailPageProps): Promise<Metadata> {
-  const post = await getPostFromParams(params);
+export async function generateMetadata(
+  { params }: BlogDetailPageProps
+): Promise<Metadata> {
+  const post = await getPostFromParams(await params);
 
   if (!post) {
     return {};
@@ -80,7 +73,8 @@ export async function generateStaticParams(): Promise<
 }
 
 export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
-  const post = await getPostFromParams(params);
+
+  const post = await getPostFromParams(await params);
 
   if (!post || !post.published) {
     notFound();
@@ -88,15 +82,11 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
 
   return (
     <Base isProselytizing>
-      <div className="flex flex-row justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
-          <p className="text-gray-600 mb-2">{post.description}</p>
-          <p className="text-sm text-gray-500">{formatDate(post.date)}</p>
-        </div>
-
-        <BackButton />
-      </div>
+      <BlogHeader
+        title={post.title}
+        description={post.description}
+        date={post.date}
+      />
       <MDXContent code={post.body} />
     </Base>
   );

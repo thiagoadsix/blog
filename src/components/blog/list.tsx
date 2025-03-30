@@ -5,7 +5,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { ClientOnlyDate } from "@/components/client/client-only-date";
 
 interface Blog {
   slug: string;
@@ -24,6 +24,7 @@ function paginate<T>(items: T[], currentPage: number, itemsPerPage: number) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   return items.slice(startIndex, startIndex + itemsPerPage);
 }
+
 export default function BlogList({ posts }: BlogsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -53,7 +54,7 @@ export default function BlogList({ posts }: BlogsListProps) {
               </h2>
             </Link>
             <p className="text-gray-600 mb-2">{blog.description}</p>
-            <p className="text-sm text-gray-500">{formatDate(blog.date)}</p>
+            <ClientOnlyDate date={blog.date} />
           </div>
         ))}
       </div>
