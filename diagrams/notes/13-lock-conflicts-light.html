@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which table locks block each other</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Matrix &#183; Diagram Design</p>
+    <h1>Which table locks block each other</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lock-conflicts-title lock-conflicts-desc">
+      <title id="lock-conflicts-title">Which PostgreSQL table locks block each other</title>
+      <desc id="lock-conflicts-desc">A conflict matrix of the six PostgreSQL table lock modes an application meets, naming the statement that takes each one and showing which pairs can run together. Ordinary reads and writes are compatible with each other, while ACCESS EXCLUSIVE, taken by ALTER TABLE, DROP and TRUNCATE, conflicts with every mode including the ACCESS SHARE that a plain SELECT takes.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#ffffff"/>
+      <text x="32" y="28" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LOCK ALREADY HELD</text>
+      <text x="606" y="28" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">LOCK THE NEXT STATEMENT ASKS FOR</text>
+      <text x="346" y="58" fill="#18181b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">AS</text>
+      <text x="450" y="58" fill="#18181b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RS</text>
+      <text x="554" y="58" fill="#18181b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RE</text>
+      <text x="658" y="58" fill="#18181b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SUE</text>
+      <text x="762" y="58" fill="#18181b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SH</text>
+      <text x="866" y="58" fill="#ee2b2b" font-size="10" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">AE</text>
+      <line x1="32" y1="72" x2="916" y2="72" stroke="#e3e3e8" stroke-width="1"/>
+      <text x="44" y="112" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">ACCESS SHARE</text>
+      <text x="284" y="112" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">AS</text>
+      <text x="44" y="132" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">SELECT</text>
+      <rect x="341" y="106" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="346" y="134" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="445" y="106" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="134" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="549" y="106" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="554" y="134" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="653" y="106" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="658" y="134" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="757" y="106" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="762" y="134" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="861" y="106" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="866" y="134" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="32" y="160" width="884" height="76" fill="rgba(24,24,27,0.02)"/>
+      <text x="44" y="188" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">ROW SHARE</text>
+      <text x="284" y="188" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">RS</text>
+      <text x="44" y="208" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">SELECT ... FOR UPDATE</text>
+      <rect x="341" y="182" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="346" y="210" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="445" y="182" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="210" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="549" y="182" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="554" y="210" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="653" y="182" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="658" y="210" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="757" y="182" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="762" y="210" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="861" y="182" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="866" y="210" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <text x="44" y="264" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">ROW EXCLUSIVE</text>
+      <text x="284" y="264" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">RE</text>
+      <text x="44" y="284" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">INSERT, UPDATE, DELETE</text>
+      <rect x="341" y="258" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="346" y="286" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="445" y="258" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="286" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="549" y="258" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="554" y="286" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="653" y="258" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="658" y="286" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="757" y="258" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="762" y="286" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="861" y="258" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="866" y="286" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="32" y="312" width="884" height="76" fill="rgba(24,24,27,0.02)"/>
+      <text x="44" y="340" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">SHARE UPDATE EXCLUSIVE</text>
+      <text x="284" y="340" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">SUE</text>
+      <text x="44" y="360" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">VACUUM, ANALYZE,</text>
+      <text x="44" y="374" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">CREATE INDEX CONCURRENTLY</text>
+      <rect x="341" y="334" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="346" y="362" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="445" y="334" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="362" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="549" y="334" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="554" y="362" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="653" y="334" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="658" y="362" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="757" y="334" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="762" y="362" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="861" y="334" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="866" y="362" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <text x="44" y="416" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">SHARE</text>
+      <text x="284" y="416" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">SH</text>
+      <text x="44" y="436" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">CREATE INDEX</text>
+      <rect x="341" y="410" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="346" y="438" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="445" y="410" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="438" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="549" y="410" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="554" y="438" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="653" y="410" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="658" y="438" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="757" y="410" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="762" y="438" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUNS</text>
+      <rect x="861" y="410" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="866" y="438" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="32" y="464" width="884" height="76" rx="6" fill="rgba(238,43,43,0.05)" stroke="rgba(238,43,43,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="44" y="492" fill="#ee2b2b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">ACCESS EXCLUSIVE</text>
+      <text x="284" y="492" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">AE</text>
+      <text x="44" y="512" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">ALTER TABLE, DROP, TRUNCATE</text>
+      <rect x="341" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="346" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="445" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="450" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="549" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="554" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="653" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="658" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="757" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="762" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <rect x="861" y="486" width="10" height="10" rx="2" fill="#ee2b2b"/>
+      <text x="866" y="514" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WAITS</text>
+      <text x="480" y="580" fill="#ee2b2b" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">one row blocks everything, and it is the row every ALTER TABLE lives in</text>
+      <text x="480" y="604" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">columns are the same six modes, in the same order</text>
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="150" y="644" width="10" height="10" rx="2" fill="#18181b"/>
+      <text x="170" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Conflict, the second statement waits</text>
+      <rect x="430" y="644" width="10" height="10" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <text x="450" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Compatible, both run</text>
+      <rect x="640" y="643" width="24" height="12" rx="2" fill="rgba(238,43,43,0.05)" stroke="rgba(238,43,43,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="672" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Conflicts with every mode</text>
+    </svg>
+
+  </div>
+</body>
+</html>

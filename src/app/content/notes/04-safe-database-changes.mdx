@@ -75,6 +75,89 @@ table, and renaming an API field. Learn it once.
 
 ## What DDL actually locks
 
+### DDL and DML
+
+Two categories of SQL statement. The distinction is the entire reason migrations are
+dangerous and ordinary traffic is not.
+
+**DML** — *Data Manipulation Language*. Statements that change the **rows**: `INSERT`,
+`UPDATE`, `DELETE`. `SELECT` reads them. This is what your application runs, continuously.
+
+**DDL** — *Data Definition Language*. Statements that change the **shape** of the database:
+`CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, `TRUNCATE`, `CREATE INDEX`. This is what a
+migration runs, rarely, and usually while the application is still running DML.
+
+Both target the same table. PostgreSQL arbitrates between them with table-level locks.
+
+### The locks you never asked for
+
+Every statement takes a lock on every table it touches, automatically. You do not write
+`LOCK TABLE` — the *kind* of statement decides the mode. A lock mode is a declaration of what
+**other** statements may do while yours is running.
+
+PostgreSQL has eight table lock modes. Six of them show up in normal work:
+
+| Mode | Taken automatically by | What it is saying |
+| --- | --- | --- |
+| `ACCESS SHARE` | `SELECT` | "I am reading. Do not change the table's shape." |
+| `ROW SHARE` | `SELECT ... FOR UPDATE` | "I am reading rows I intend to write." |
+| `ROW EXCLUSIVE` | `INSERT`, `UPDATE`, `DELETE` | "I am changing rows — not the shape." |
+| `SHARE UPDATE EXCLUSIVE` | `VACUUM`, `ANALYZE`, `CREATE INDEX CONCURRENTLY`, `VALIDATE CONSTRAINT` | "Maintenance in progress. Traffic can carry on." |
+| `SHARE` | `CREATE INDEX`, without `CONCURRENTLY` | "Reads are fine. Nobody write." |
+| `ACCESS EXCLUSIVE` | most `ALTER TABLE`, `DROP TABLE`, `TRUNCATE`, `REINDEX`, `VACUUM FULL` | "Nobody touches this table at all." |
+
+The names are bad. Decode them once and they stop being noise:
+
+- **ACCESS** in the name means the mode cares about *reading*. Only the two `ACCESS` modes
+  interact with a plain `SELECT` — which is why `ACCESS EXCLUSIVE` is the only mode that can
+  block one.
+- **ROW** means the statement works on rows, so at the *table* level it is deliberately
+  permissive. Contention between two `UPDATE`s is handled by row locks underneath, not here.
+- **EXCLUSIVE** means it excludes the matching `SHARE` mode — not that it excludes
+  everything. `ROW EXCLUSIVE` is a mild lock despite the frightening name.
+
+### Which pairs actually conflict
+
+<Diagram
+  src="/diagrams/13-lock-conflicts"
+  alt="Conflict matrix of the six PostgreSQL table lock modes, naming the statement that takes each and showing which pairs can run together."
+  width={1920}
+  height={1345}
+  caption="Rows are the lock already held, columns the lock being requested. The matrix is symmetric."
+/>
+
+Two readings carry most of the value:
+
+**`ROW EXCLUSIVE` does not conflict with itself.** Two `UPDATE`s on the same table never
+block each other at the table level. Different rows, no contention at all; same row, a row
+lock sorts it out. This is why normal write traffic scales and why `INSERT` never waits for
+another `INSERT`.
+
+**`ACCESS EXCLUSIVE` conflicts with all six**, including `ACCESS SHARE`. It is the only mode
+that can stop a plain `SELECT`, and it is the mode almost every `ALTER TABLE` takes.
+
+### What that means per operation
+
+| You are doing | Lock you take | Who you block |
+| --- | --- | --- |
+| Serving reads | `ACCESS SHARE` | Only a migration |
+| Serving writes | `ROW EXCLUSIVE` | A plain `CREATE INDEX`, and a migration |
+| `CREATE INDEX` | `SHARE` | Every write. Reads continue |
+| `CREATE INDEX CONCURRENTLY` | `SHARE UPDATE EXCLUSIVE` | Nothing your application does |
+| `VACUUM`, `ANALYZE` | `SHARE UPDATE EXCLUSIVE` | Nothing your application does |
+| `VALIDATE CONSTRAINT` | `SHARE UPDATE EXCLUSIVE` | Nothing your application does |
+| `ALTER TABLE ... ADD COLUMN` | `ACCESS EXCLUSIVE` | Everything, including `SELECT` |
+| `DROP TABLE`, `TRUNCATE` | `ACCESS EXCLUSIVE` | Everything, including `SELECT` |
+
+<Callout type="default">
+  That table is the whole argument for the cookbook below. Every "safe" form in it is a way
+  of doing the same work under `SHARE UPDATE EXCLUSIVE` instead of `ACCESS EXCLUSIVE` —
+  `CONCURRENTLY` for indexes, `NOT VALID` plus `VALIDATE` for constraints, expand/contract
+  for everything else.
+</Callout>
+
+### Why a two-millisecond ALTER can take a table down
+
 <Diagram
   src="/diagrams/11-lock-queue"
   alt="Timeline showing a long-running select holding access share, an alter table queued behind it for access exclusive, and every subsequent query queued behind the alter."
@@ -83,20 +166,23 @@ table, and renaming an API field. Learn it once.
   caption="The ALTER is not the outage. The queue that forms behind the waiting ALTER is."
 />
 
-Most `ALTER TABLE` forms take an `ACCESS EXCLUSIVE` lock, which conflicts with **every**
-other lock mode — including the `ACCESS SHARE` that a plain `SELECT` takes.
-
 The failure mode people do not predict:
 
-1. A slow `SELECT` (or an analytics query, or a forgotten open transaction) holds
-   `ACCESS SHARE` on `orders`.
-2. Your `ALTER TABLE orders ADD COLUMN ...` requests `ACCESS EXCLUSIVE` and waits.
-3. **Every query that arrives after it also waits** — even plain `SELECT`s that would have
-   been perfectly compatible with the query already running. Lock requests queue in order,
-   and nothing overtakes the waiting `ALTER`.
+1. A slow `SELECT` — an analytics query, an export, a forgotten open transaction — holds
+   `ACCESS SHARE` on `orders`. Perfectly normal.
+2. Your `ALTER TABLE orders ADD COLUMN ...` requests `ACCESS EXCLUSIVE`. It conflicts, so it
+   **waits**.
+3. **Every query that arrives after it also waits** — including plain `SELECT`s that would
+   have been perfectly compatible with the query already running. Lock requests are served in
+   arrival order, and nothing overtakes the waiting `ALTER`.
 
-So a migration that would have taken 2 ms takes the whole table offline for as long as one
-unrelated slow query runs. The `ALTER` was never the problem; the queue behind it was.
+Step 3 is the part that surprises people. You might expect new `SELECT`s to slip past, since
+`ACCESS SHARE` and `ACCESS SHARE` do not conflict — but the queue is FIFO, and they conflict
+with the `ALTER` sitting in front of them. So the table goes dark for as long as one unrelated
+slow query runs.
+
+The `ALTER` itself would have finished in two milliseconds. The queue behind it is the
+incident.
 
 ### The mitigation is two settings
 
@@ -376,6 +462,9 @@ one long hard-locked operation into one instant operation plus one background on
 - [ ] State the rollback invariant in one sentence
 - [ ] The five steps of expand/contract, in order, and which one is irreversible
 - [ ] Why the drop goes in a separate deploy days later
+- [ ] What DDL and DML each mean, and which one your application runs all day
+- [ ] Name the six table lock modes and the statement that takes each
+- [ ] Why `ROW EXCLUSIVE` does not conflict with itself
 - [ ] Which lock `ALTER TABLE` takes and what it conflicts with
 - [ ] Why a waiting `ALTER` blocks queries that would not have conflicted
 - [ ] What `lock_timeout` buys you, and what it needs to be paired with
