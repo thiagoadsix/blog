@@ -4,7 +4,7 @@ interface BaseProps {
 }
 
 export const Base = ({ children, isProselytizing = false }: BaseProps) => (
-  <main className="flex min-h-screen flex-col">
+  <main className="flex flex-1 flex-col">
     <div
       className={`${
         isProselytizing

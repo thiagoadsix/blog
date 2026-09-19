@@ -24,7 +24,7 @@ const Home = () => {
     );
 
   return (
-    <main className="flex min-h-screen flex-col items-center">
+    <main className="flex flex-1 flex-col items-center">
       <div className="w-full max-w-(--breakpoint-lg) mx-auto p-4">
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">About Me</h2>
