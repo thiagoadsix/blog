@@ -10,7 +10,6 @@ import { siteConfig } from "@/config/site";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClientOnlyDate } from "@/components/client/client-only-date";
 
 interface BlogHeaderProps {
   title: string;
@@ -86,7 +85,7 @@ export function BlogHeader({
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            <ClientOnlyDate date={date} as="time" />
+            <time dateTime={date} className="text-sm text-gray-500">{formatDate(date)}</time>
           </div>
           {estimatedReadingTime && (
             <div className="flex items-center gap-1">

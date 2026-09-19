@@ -5,7 +5,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { ClientOnlyDate } from "@/components/client/client-only-date";
+import { formatDate } from "@/lib/utils";
 
 interface Blog {
   slug: string;
@@ -54,7 +54,7 @@ export default function BlogList({ posts }: BlogsListProps) {
               </h2>
             </Link>
             <p className="text-gray-800 dark:text-gray-200 mb-2">{blog.description}</p>
-            <ClientOnlyDate date={blog.date} />
+            <p className="text-sm text-gray-500">{formatDate(blog.date)}</p>
           </div>
         ))}
       </div>

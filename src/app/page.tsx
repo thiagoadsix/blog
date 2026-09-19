@@ -5,9 +5,8 @@ import Image from "next/image";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 import { siteConfig } from "@/config/site";
 import { posts } from "#site/content";
-import { sorPosts } from "@/lib/utils";
+import { sorPosts, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ClientOnlyDate } from "@/components/client/client-only-date";
 
 const projects: any[] = [];
 
@@ -96,7 +95,7 @@ const Home = () => {
                   </h2>
                 </Link>
                 <p className="text-gray-800 dark:text-gray-200 mb-2">{blog.description}</p>
-                <ClientOnlyDate date={blog.date} />
+                <p className="text-sm text-gray-500">{formatDate(blog.date)}</p>
               </div>
             ))}
           </ul>

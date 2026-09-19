@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? siteConfig.url),
 };
 
-const viewPort: Viewport = {
+export const viewport: Viewport = {
   themeColor: [
     {
       media: "(prefers-color-scheme: light)",
@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
