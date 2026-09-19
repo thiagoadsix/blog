@@ -23,7 +23,6 @@ interface BlogHeaderProps {
   estimatedReadingTime?: string;
   categories?: string[];
   featuredImage?: string;
-  /** Directory name under `examples/` holding the runnable code for this post. */
   example?: string;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { formatDate } from "@/lib/utils";
 
 interface ClientOnlyDateProps {
@@ -10,21 +10,21 @@ interface ClientOnlyDateProps {
   as?: 'p' | 'time';
 }
 
+const subscribe = () => () => {};
+
 export function ClientOnlyDate({
   date,
   className = "text-sm text-gray-500",
   format = formatDate,
   as = 'p'
 }: ClientOnlyDateProps) {
-  const [formattedDate, setFormattedDate] = useState<string>('');
+  const isHydrated = useSyncExternalStore(subscribe, () => true, () => false);
 
-  useEffect(() => {
-    setFormattedDate(format(date));
-  }, [date, format]);
-
-  if (!formattedDate) {
+  if (!isHydrated) {
     return <p className={`${className} opacity-0`}>Loading...</p>;
   }
+
+  const formattedDate = format(date);
 
   if (as === 'time') {
     return <time dateTime={date} className={className}>{formattedDate}</time>;
