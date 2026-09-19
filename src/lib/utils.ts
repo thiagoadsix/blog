@@ -1,4 +1,4 @@
-import { Posts } from "#site/content";
+import { Notes, Posts } from "#site/content";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -22,4 +22,8 @@ export function sorPosts(posts: Array<Posts>): Array<Posts> {
     if (a.date < b.date) return 1;
     return 0;
   });
+}
+
+export function sortNotes(notes: Array<Notes>): Array<Notes> {
+  return [...notes].sort((a, b) => a.order - b.order);
 }

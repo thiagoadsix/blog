@@ -16,6 +16,9 @@ export const Header = () => (
         <Link href="/blog">
           <button className="btn">Blog</button>
         </Link>
+        <Link href="/notes">
+          <button className="btn">Notes</button>
+        </Link>
         <ModeToggle />
       </div>
     </div>
