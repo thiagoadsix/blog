@@ -39,3 +39,33 @@
 .subheading-anchor {
   @apply no-underline hover:underline;
 }
+
+.prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::after {
+  content: none;
+}
+
+.prose ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.prose li.task-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  padding-left: 0;
+}
+
+.prose li.task-list-item::marker {
+  content: none;
+}
+
+.prose li.task-list-item > input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin: 0;
+  translate: 0 0.15rem;
+  accent-color: currentColor;
+}
