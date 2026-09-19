@@ -26,7 +26,7 @@ const Home = () => {
 
   return (
     <main className="flex min-h-screen flex-col items-center">
-      <div className="w-full max-w-screen-lg mx-auto p-4">
+      <div className="w-full max-w-(--breakpoint-lg) mx-auto p-4">
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">About Me</h2>
           <p className="text-lg">
@@ -60,7 +60,7 @@ const Home = () => {
               projects.map((project) => (
                 <div
                   key={project.id}
-                  className="p-4 border rounded-lg shadow-sm hover:shadow-md"
+                  className="p-4 border rounded-lg shadow-xs hover:shadow-md"
                 >
                   <Image
                     src={project.imageUrl}
@@ -85,7 +85,7 @@ const Home = () => {
             placeholder="Search blogs..."
             value={searchTerm}
             onChange={handleSearch}
-            className="w-full p-2 mb-8 border rounded focus:outline-none focus:border-zinc-500"
+            className="w-full p-2 mb-8 border rounded focus:outline-hidden focus:border-zinc-500"
           />
           <ul className="space-y-4">
             {sortedPosts.map((blog) => (

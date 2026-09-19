@@ -5,7 +5,7 @@ import { siteConfig } from "@/config/site";
 
 export const Header = () => (
   <header className="w-full">
-    <div className="max-w-screen-lg mx-auto flex justify-between items-center p-4">
+    <div className="max-w-(--breakpoint-lg) mx-auto flex justify-between items-center p-4">
       <div className="flex items-center">
         <h1 className="text-xl font-bold">{siteConfig.author}</h1>
       </div>

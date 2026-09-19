@@ -8,8 +8,8 @@ export const Base = ({ children, isProselytizing = false }: BaseProps) => (
     <div
       className={`${
         isProselytizing
-          ? "prose dark:prose-invert w-full max-w-screen-lg mx-auto p-4"
-          : "w-full max-w-screen-lg mx-auto p-4"
+          ? "prose dark:prose-invert w-full max-w-(--breakpoint-lg) mx-auto p-4"
+          : "w-full max-w-(--breakpoint-lg) mx-auto p-4"
       }`}
     >
       {children}
