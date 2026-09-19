@@ -1,0 +1,17 @@
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/tmp
+    networks:
+      - backend
+
+volumes:
+  api_volume:
+
+networks:
+  backend:
+    driver: bridge
