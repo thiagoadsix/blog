@@ -1,0 +1,39 @@
+services:
+  database:
+    container_name: postgres_posts
+    image: postgres:alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=posts
+      - POSTGRES_PASSWORD=12345678
+      - POSTGRES_USER=posts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+    networks:
+      - backend
+
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/tmp
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  api_volume:
+
+networks:
+  backend:
+    driver: bridge

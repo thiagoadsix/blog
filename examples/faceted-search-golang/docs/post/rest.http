@@ -1,0 +1,21 @@
+@url = http://localhost:3000
+
+### Create post
+POST {{url}}/posts
+Host: example.com
+Content-Type: application/json
+Content-Length: 456
+
+{
+  "title": "Unique Title for Post",
+  "type": "OFFER",
+  "price": 6,
+  "status": "DRAFT",
+  "fixed": true,
+  "dueDate": "2024-07-30"
+}
+
+### Get all products by filters and paginated
+GET {{url}}/posts?limit=2&page=1&minPrice=1&maxPrice=10&type=OFFER&search=Title
+Host: example.com
+Content-Type: application/json
