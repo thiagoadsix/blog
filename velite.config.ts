@@ -18,6 +18,8 @@ const posts = defineCollection({
       description: s.string(),
       date: s.isodate(),
       published: s.boolean().default(true),
+      // Directory name under `examples/` holding the runnable code for this post.
+      example: s.string().optional(),
       body: s.mdx(),
     })
     .transform(computedFields),

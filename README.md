@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# blog
 
-## Getting Started
+Source for [thiagoadsix.com](https://thiagoadsix.com) — a Next.js site whose posts are
+MDX files compiled by [Velite](https://velite.js.org/), plus the runnable code that
+accompanies those posts.
 
-First, run the development server:
+## Layout
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+.
+├── src/
+│   ├── app/
+│   │   ├── content/blog/   # the posts (MDX)
+│   │   └── blog/           # post list and post detail routes
+│   ├── components/
+│   └── config/
+└── examples/               # runnable code for posts
+    ├── faceted-search-golang/
+    ├── golang-air-docker/
+    └── notification-service/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Each directory under `examples/` is a self-contained project with its own toolchain,
+README and `.gitignore`. They were imported with `git subtree`, so their original
+history is preserved here.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Linking a post to its example
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Add an `example` field to the post's frontmatter, set to the directory name under
+`examples/`:
 
-## Learn More
+```yaml
+---
+slug: golang-air-docker
+title: Golang Local Development with Live Reloading using Air and Docker Compose
+date: 2024-08-12
+example: golang-air-docker
+---
+```
 
-To learn more about Next.js, take a look at the following resources:
+The post header then renders a "Source code" link pointing at that directory on
+GitHub. The field is optional — posts without accompanying code simply omit it.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+nvm use        # version pinned in .nvmrc
+npm install
+npm run dev    # http://localhost:3000
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+`npm run build` runs Velite as part of the Next.js build, so `.velite/` is
+regenerated from the MDX sources and is not committed.

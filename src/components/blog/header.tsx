@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Clock, Calendar, Share2 } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, Share2, Code2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatDate } from "@/lib/utils";
+import { siteConfig } from "@/config/site";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,8 @@ interface BlogHeaderProps {
   estimatedReadingTime?: string;
   categories?: string[];
   featuredImage?: string;
+  /** Directory name under `examples/` holding the runnable code for this post. */
+  example?: string;
 }
 
 export function BlogHeader({
@@ -32,6 +35,7 @@ export function BlogHeader({
   estimatedReadingTime,
   categories,
   featuredImage,
+  example,
 }: BlogHeaderProps) {
   return (
     <div className="space-y-6">
@@ -90,6 +94,17 @@ export function BlogHeader({
               <Clock className="h-4 w-4" />
               <span>{estimatedReadingTime} min read</span>
             </div>
+          )}
+          {example && (
+            <Link
+              href={`${siteConfig.links.repository}/tree/main/examples/${example}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 no-underline hover:text-foreground"
+            >
+              <Code2 className="h-4 w-4" />
+              Source code
+            </Link>
           )}
           <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
             <Share2 className="h-4 w-4" />

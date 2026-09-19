@@ -6,6 +6,7 @@ export const siteConfig = {
   links: {
     linkedIn: "https://www.linkedin.com/in/thiago-andrade-silva",
     github: "https://github.com/thiagoadsix",
+    repository: "https://github.com/thiagoadsix/blog",
   },
 };
 

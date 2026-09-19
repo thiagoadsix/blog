@@ -85,6 +85,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         title={post.title}
         description={post.description}
         date={post.date}
+        example={post.example}
       />
       <MDXContent code={post.body} />
     </Base>
