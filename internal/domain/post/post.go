@@ -34,21 +34,6 @@ type Post struct {
 	DeletedAt time.Time  `json:"deletedAt"`
 }
 
-type DetailedPost struct {
-	ID        string     `json:"id"`
-	Title     string     `json:"title"`
-	Type      TypeEnum   `json:"type"`
-	Coupon    string     `json:"coupon"`
-	Price     float32    `json:"price"`
-	DueDate   time.Time  `json:"dueDate"`
-	Status    StatusEnum `json:"status"`
-	Link      string     `json:"link"`
-	Fixed     bool       `json:"fixed"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	DeletedAt time.Time  `json:"deletedAt"`
-}
-
 type Status struct {
 	Status StatusEnum `json:"status" validate:"required,status_enum"`
 }

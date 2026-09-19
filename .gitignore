@@ -1,0 +1,8 @@
+# env
+.env
+
+# air / build output
+tmp/
+
+# misc
+.DS_Store

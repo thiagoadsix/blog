@@ -1,6 +1,6 @@
 services:
   database:
-    container_name: postgres_local
+    container_name: postgres_posts
     image: postgres:alpine
     ports:
       - "5432:5432"
