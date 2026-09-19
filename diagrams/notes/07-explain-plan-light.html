@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to read an EXPLAIN ANALYZE plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Tree &#183; Diagram Design</p>
+    <h1>How to read an EXPLAIN ANALYZE plan</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="explain-plan-title explain-plan-desc">
+      <title id="explain-plan-title">How to read an EXPLAIN ANALYZE plan</title>
+      <desc id="explain-plan-desc">A plan tree read from the deepest node upward. The sequential scan on orders was estimated to return one row but returned 48,210, so the planner picked a nested loop and then executed the inner index scan 48,210 times, which is where almost all of the 842 milliseconds is spent.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#ffffff"/>
+
+      <!-- query strip -->
+      <text x="32" y="44" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">THE QUERY</text>
+      <text x="32" y="66" fill="#18181b" font-size="10" font-family="'Geist Mono', monospace">SELECT o.id, c.name FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.status = 'pending'</text>
+      <line x1="32" y1="84" x2="928" y2="84" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+
+      <!-- connectors: children feed the parent upward -->
+      <path d="M 312 304 L 312 264 A 8 8 0 0 1 320 256 L 412 256 A 8 8 0 0 0 420 248 L 420 208" fill="none" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M 648 304 L 648 264 A 8 8 0 0 0 640 256 L 548 256 A 8 8 0 0 1 540 248 L 540 208" fill="none" stroke="#ee2b2b" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+      <line x1="688" y1="160" x2="656" y2="160" stroke="#ee2b2b" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-accent)"/>
+
+      <!-- connector labels -->
+      <rect x="328" y="236" width="76" height="12" rx="2" fill="#ffffff"/>
+      <text x="366" y="245" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">48210 ROWS</text>
+
+      <rect x="552" y="236" width="84" height="12" rx="2" fill="#ffffff"/>
+      <text x="594" y="245" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">LOOPS=48210</text>
+
+      <!-- root plan node -->
+      <rect x="304" y="112" width="352" height="96" rx="6" fill="#ffffff"/>
+      <rect x="304" y="112" width="352" height="96" rx="6" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <rect x="312" y="120" width="36" height="12" rx="2" fill="transparent" stroke="rgba(24,24,27,0.40)" stroke-width="0.8"/>
+      <text x="330" y="129" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOIN</text>
+      <text x="480" y="154" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Nested Loop</text>
+      <text x="480" y="176" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">cost=0.43..8112.90 rows=1 width=64</text>
+      <text x="480" y="194" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">actual time=0.05..842.11 rows=48210 loops=1</text>
+
+      <!-- estimate-gap callout (focal) -->
+      <rect x="688" y="112" width="224" height="96" rx="6" fill="#ffffff"/>
+      <rect x="688" y="112" width="224" height="96" rx="6" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1.2"/>
+      <text x="800" y="140" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ESTIMATE VS ACTUAL</text>
+      <text x="800" y="166" fill="#ee2b2b" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">1 row planned</text>
+      <text x="800" y="188" fill="#ee2b2b" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">48,210 returned</text>
+
+      <!-- outer child -->
+      <rect x="160" y="304" width="304" height="112" rx="6" fill="#ffffff"/>
+      <rect x="160" y="304" width="304" height="112" rx="6" fill="rgba(24,24,27,0.03)" stroke="rgba(24,24,27,0.30)" stroke-width="1"/>
+      <rect x="168" y="312" width="36" height="12" rx="2" fill="transparent" stroke="rgba(24,24,27,0.40)" stroke-width="0.8"/>
+      <text x="186" y="321" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SCAN</text>
+      <text x="312" y="346" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Seq Scan</text>
+      <text x="312" y="366" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">on orders</text>
+      <text x="312" y="384" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Filter: (status = 'pending')</text>
+      <text x="312" y="402" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">rows=1 &#183; actual rows=48210</text>
+
+      <!-- inner child -->
+      <rect x="496" y="304" width="304" height="112" rx="6" fill="#ffffff"/>
+      <rect x="496" y="304" width="304" height="112" rx="6" fill="rgba(24,24,27,0.05)" stroke="#7b7b85" stroke-width="1"/>
+      <rect x="504" y="312" width="36" height="12" rx="2" fill="transparent" stroke="rgba(24,24,27,0.40)" stroke-width="0.8"/>
+      <text x="522" y="321" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SCAN</text>
+      <text x="648" y="346" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Index Scan</text>
+      <text x="648" y="366" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">using customers_pkey</text>
+      <text x="648" y="384" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">actual rows=1 loops=48210</text>
+      <text x="648" y="402" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">0.017 ms per loop</text>
+
+      <!-- execution order markers -->
+      <circle cx="136" cy="360" r="9" fill="#ffffff" stroke="#7b7b85" stroke-width="1"/>
+      <text x="136" y="363" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">1</text>
+      <circle cx="824" cy="360" r="9" fill="#ffffff" stroke="#7b7b85" stroke-width="1"/>
+      <text x="824" y="363" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">2</text>
+      <circle cx="280" cy="160" r="9" fill="#ffffff" stroke="#7b7b85" stroke-width="1"/>
+      <text x="280" y="163" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">3</text>
+
+      <!-- where the time goes -->
+      <text x="32" y="456" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">WHERE THE 842 MS GOES</text>
+      <text x="304" y="486" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">Seq Scan, once</text>
+      <rect x="320" y="472" width="12" height="20" rx="2" fill="rgba(24,24,27,0.10)" stroke="#7b7b85" stroke-width="0.8"/>
+      <text x="344" y="486" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace">22 ms</text>
+      <text x="304" y="518" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">Index Scan, per row</text>
+      <rect x="320" y="504" width="480" height="20" rx="2" fill="rgba(24,24,27,0.05)" stroke="#7b7b85" stroke-width="0.8"/>
+      <text x="332" y="518" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace">820 ms spread across 48,210 loops</text>
+
+      <!-- editorial payoff -->
+      <text x="480" y="576" fill="#18181b" font-size="15" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">one wrong estimate, forty-eight thousand trips to the index</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="116" y="643" width="24" height="12" rx="2" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <text x="148" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Plan node</text>
+      <line x1="256" y1="649" x2="280" y2="649" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <text x="288" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Rows to parent</text>
+      <line x1="420" y1="649" x2="444" y2="649" stroke="#ee2b2b" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+      <text x="452" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Repeated per row</text>
+      <circle cx="600" cy="649" r="7" fill="#ffffff" stroke="#7b7b85" stroke-width="1"/>
+      <text x="600" y="652" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">1</text>
+      <text x="614" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Execution order</text>
+      <rect x="760" y="643" width="24" height="12" rx="2" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1"/>
+      <text x="792" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Estimate gap</text>
+    </svg>
+
+  </div>
+</body>
+</html>

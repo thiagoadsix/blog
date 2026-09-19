@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why both writes succeeded and the invariant broke</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Sequence &#183; Diagram Design</p>
+    <h1>Why both writes succeeded and the invariant broke</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="write-skew-title write-skew-desc">
+      <title id="write-skew-title">Why both writes succeeded and the invariant broke</title>
+      <desc id="write-skew-desc">A sequence diagram of write skew under READ COMMITTED: two transactions each count one active price for option 7, each deactivates the old row and inserts a new one from its own stale read, and both commit without conflict, leaving two active prices even though neither transaction did anything wrong on its own.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#ffffff"/>
+
+      <!-- stale-read window -->
+      <rect x="48" y="252" width="864" height="148" rx="8" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="64" y="246" width="208" height="12" rx="2" fill="#ffffff"/>
+      <text x="168" y="255" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">EACH WRITES FROM A STALE READ</text>
+
+      <!-- lifelines -->
+      <line x1="152" y1="84" x2="152" y2="480" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="480" y1="84" x2="480" y2="480" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="808" y1="84" x2="808" y2="480" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!-- messages -->
+      <line x1="152" y1="128" x2="480" y2="128" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="164" x2="152" y2="164" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <line x1="808" y1="200" x2="480" y2="200" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="236" x2="808" y2="236" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <line x1="152" y1="276" x2="480" y2="276" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="152" y1="312" x2="480" y2="312" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="808" y1="348" x2="480" y2="348" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="808" y1="384" x2="480" y2="384" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="152" y1="424" x2="480" y2="424" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="808" y1="460" x2="480" y2="460" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- message labels -->
+      <rect x="272" y="108" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="316" y="117" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">COUNT OPTION 7</text>
+      <rect x="290" y="144" width="52" height="12" rx="2" fill="#ffffff"/>
+      <text x="316" y="153" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">READS 1</text>
+      <rect x="600" y="180" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="644" y="189" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">COUNT OPTION 7</text>
+      <rect x="618" y="216" width="52" height="12" rx="2" fill="#ffffff"/>
+      <text x="644" y="225" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">READS 1</text>
+      <rect x="272" y="256" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="316" y="265" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DEACTIVATE OLD</text>
+      <rect x="272" y="292" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="316" y="301" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INSERT NEW ROW</text>
+      <rect x="600" y="328" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="644" y="337" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DEACTIVATE OLD</text>
+      <rect x="600" y="364" width="88" height="12" rx="2" fill="#ffffff"/>
+      <text x="644" y="373" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INSERT NEW ROW</text>
+      <rect x="284" y="404" width="64" height="12" rx="2" fill="#ffffff"/>
+      <text x="316" y="413" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">COMMIT OK</text>
+      <rect x="612" y="440" width="64" height="12" rx="2" fill="#ffffff"/>
+      <text x="644" y="449" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">COMMIT OK</text>
+
+      <!-- transaction starts -->
+      <rect x="128" y="98" width="48" height="12" rx="2" fill="#ffffff"/>
+      <text x="152" y="107" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">BEGIN</text>
+      <rect x="784" y="170" width="48" height="12" rx="2" fill="#ffffff"/>
+      <text x="808" y="179" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">BEGIN</text>
+
+      <!-- actors -->
+      <rect x="64" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="64" y="36" width="176" height="48" rx="6" fill="rgba(123,123,133,0.10)" stroke="#9a9aa3" stroke-width="1"/>
+      <text x="152" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Transaction A</text>
+      <text x="152" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">READ COMMITTED</text>
+
+      <rect x="392" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="392" y="36" width="176" height="48" rx="6" fill="rgba(24,24,27,0.05)" stroke="#7b7b85" stroke-width="1"/>
+      <text x="480" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">prices</text>
+      <text x="480" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">option_id = 7</text>
+
+      <rect x="720" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="720" y="36" width="176" height="48" rx="6" fill="rgba(123,123,133,0.10)" stroke="#9a9aa3" stroke-width="1"/>
+      <text x="808" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Transaction B</text>
+      <text x="808" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">READ COMMITTED</text>
+
+      <!-- broken end state -->
+      <rect x="48" y="496" width="864" height="60" rx="8" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1"/>
+      <text x="68" y="517" fill="#ee2b2b" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">RESULT</text>
+      <text x="68" y="539" fill="#ee2b2b" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Two active prices for option 7</text>
+      <text x="892" y="532" fill="#ee2b2b" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="end">neither transaction broke a rule it could see</text>
+
+      <text x="48" y="588" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">FIXES &#183; SERIALIZABLE &#183; SELECT ... FOR UPDATE ON THE OPTION ROW &#183; PARTIAL UNIQUE INDEX</text>
+
+      <!-- legend -->
+      <line x1="48" y1="636" x2="912" y2="636" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+      <text x="48" y="653" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="140" y1="649" x2="164" y2="649" stroke="#7b7b85" stroke-width="1.2"/>
+      <text x="172" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Statement</text>
+      <line x1="300" y1="649" x2="324" y2="649" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4"/>
+      <text x="332" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Result</text>
+      <rect x="480" y="643" width="20" height="12" rx="2" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <text x="508" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Stale-read window</text>
+      <rect x="712" y="643" width="20" height="12" rx="2" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="0.8"/>
+      <text x="740" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Broken invariant</text>
+    </svg>
+
+  </div>
+</body>
+</html>

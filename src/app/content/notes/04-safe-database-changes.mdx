@@ -1,0 +1,392 @@
+---
+slug: notes/safe-database-changes
+title: Safe Database Changes
+description: Expand and contract, the locks DDL really takes, batched backfills, and shipping schema changes to a live system without downtime.
+order: 4
+---
+
+A schema change is a deploy that cannot be rolled back by redeploying the previous image.
+That single asymmetry is what makes migrations their own discipline: the code can go back,
+the data usually cannot.
+
+Everything below follows from one rule.
+
+<Callout type="default">
+  **The rule:** at every point in the rollout, the *previous* version of the application
+  must still be correct against the *current* schema. If that holds, a rollback is just a
+  code rollback. If it does not, a rollback needs a schema change, and you will be writing
+  it under pressure.
+</Callout>
+
+## Expand and contract
+
+<Diagram
+  src="/diagrams/10-expand-contract"
+  alt="Timeline of the expand and contract pattern across five deploys, showing the schema track and the application track staying compatible at every step."
+  width={1920}
+  height={1345}
+  caption="Five deploys instead of one. Each is individually reversible, which is the whole point."
+/>
+
+Renaming `users.email` to `users.email_address`. The tempting version is one migration and
+one deploy, and it is an outage: between the migration running and the new code being live
+on every instance, the old code is querying a column that no longer exists.
+
+The safe version is five steps, each shippable on its own:
+
+**1. Expand the schema.** Add the new column, nullable, no default that rewrites the table.
+
+```sql
+ALTER TABLE users ADD COLUMN email_address text;
+```
+
+Old code does not know it exists and keeps working.
+
+**2. Write both, read the old.**
+
+```ts
+await db.user.update({
+  where: { id },
+  data: { email: value, emailAddress: value },
+});
+```
+
+Now every new or updated row has both. Rolling back to step 1's code is still correct.
+
+**3. Backfill the existing rows.** In batches — see below. After this, both columns agree
+for every row.
+
+**4. Read the new, keep writing both.** The switch that matters, and it is a pure code
+deploy with no schema change. If it goes wrong, you redeploy step 2 and the data is fine
+because the old column was never abandoned.
+
+**5. Contract.** Stop writing the old column, deploy, wait, then drop it.
+
+```sql
+ALTER TABLE users DROP COLUMN email;
+```
+
+This is the point of no return, and it belongs in its own deploy, days after step 4 — not in
+the same pull request. The gap exists so that "we need to roll back to last week's build"
+stays possible.
+
+The same shape applies to splitting a column, changing a type, moving a field to another
+table, and renaming an API field. Learn it once.
+
+## What DDL actually locks
+
+<Diagram
+  src="/diagrams/11-lock-queue"
+  alt="Timeline showing a long-running select holding access share, an alter table queued behind it for access exclusive, and every subsequent query queued behind the alter."
+  width={1920}
+  height={1345}
+  caption="The ALTER is not the outage. The queue that forms behind the waiting ALTER is."
+/>
+
+Most `ALTER TABLE` forms take an `ACCESS EXCLUSIVE` lock, which conflicts with **every**
+other lock mode — including the `ACCESS SHARE` that a plain `SELECT` takes.
+
+The failure mode people do not predict:
+
+1. A slow `SELECT` (or an analytics query, or a forgotten open transaction) holds
+   `ACCESS SHARE` on `orders`.
+2. Your `ALTER TABLE orders ADD COLUMN ...` requests `ACCESS EXCLUSIVE` and waits.
+3. **Every query that arrives after it also waits** — even plain `SELECT`s that would have
+   been perfectly compatible with the query already running. Lock requests queue in order,
+   and nothing overtakes the waiting `ALTER`.
+
+So a migration that would have taken 2 ms takes the whole table offline for as long as one
+unrelated slow query runs. The `ALTER` was never the problem; the queue behind it was.
+
+### The mitigation is two settings
+
+```sql
+SET lock_timeout = '3s';
+SET statement_timeout = '30s';
+
+ALTER TABLE orders ADD COLUMN email_address text;
+```
+
+`lock_timeout` makes the migration **give up** rather than hold the door shut. Fail fast,
+retry in a loop, and the worst case is a migration that takes a few attempts instead of an
+incident. Every migration tool worth using lets you set this per session; if yours does not,
+set it in the migration itself.
+
+<Callout type="danger">
+  `lock_timeout` without a retry loop turns a hang into a failed deploy. Set both, and make
+  the retry backoff — the whole point is to keep attempting until you catch a quiet moment.
+</Callout>
+
+## Operation cookbook
+
+The forms that matter, safe version against the one that bites.
+
+### Adding a column
+
+```sql
+ALTER TABLE orders ADD COLUMN notes text;                       -- safe, metadata only
+ALTER TABLE orders ADD COLUMN status text NOT NULL DEFAULT 'new'; -- safe on PG 11+
+```
+
+Since PostgreSQL 11, a non-volatile default is stored in the catalogue rather than written
+to every row, so this is fast even on a huge table. On PostgreSQL 10 and earlier it rewrites
+the whole table. A **volatile** default still rewrites — `DEFAULT now()` or
+`DEFAULT gen_random_uuid()` are full rewrites on every existing row.
+
+### Adding NOT NULL to an existing column
+
+The direct form scans the whole table under `ACCESS EXCLUSIVE`:
+
+```sql
+ALTER TABLE orders ALTER COLUMN email SET NOT NULL;  -- full scan, hard lock
+```
+
+The safe path, in three steps:
+
+```sql
+ALTER TABLE orders ADD CONSTRAINT orders_email_nn
+  CHECK (email IS NOT NULL) NOT VALID;               -- instant, no scan
+
+ALTER TABLE orders VALIDATE CONSTRAINT orders_email_nn;  -- scans, weaker lock
+
+ALTER TABLE orders ALTER COLUMN email SET NOT NULL;  -- PG 12+: uses the proven constraint
+```
+
+`NOT VALID` means "enforce from now on, do not check what is already there." `VALIDATE`
+then does the scan under `SHARE UPDATE EXCLUSIVE`, which does **not** block reads or writes.
+On PostgreSQL 12+ the final `SET NOT NULL` can lean on the validated constraint and skip its
+own scan.
+
+### Adding an index
+
+```sql
+CREATE INDEX CONCURRENTLY orders_tenant_created
+  ON orders (tenant_id, created_at);
+```
+
+`CONCURRENTLY` builds without blocking writes. Three consequences to state before someone
+else does:
+
+- It **cannot run inside a transaction block**. Many migration tools wrap everything in one
+  by default; you have to opt out explicitly.
+- It is roughly twice as slow, because it makes two passes.
+- If it fails, it leaves an **invalid index** behind, which still costs write overhead while
+  never being used for reads. Find and clean them up:
+
+```sql
+SELECT indexrelid::regclass
+FROM pg_index WHERE NOT indisvalid;
+
+DROP INDEX CONCURRENTLY orders_tenant_created;
+```
+
+`DROP INDEX CONCURRENTLY` exists too, and is the right form on a live table.
+
+### Adding a foreign key or check constraint
+
+Same two-phase shape:
+
+```sql
+ALTER TABLE orders
+  ADD CONSTRAINT orders_customer_fk
+  FOREIGN KEY (customer_id) REFERENCES customers(id) NOT VALID;
+
+ALTER TABLE orders VALIDATE CONSTRAINT orders_customer_fk;
+```
+
+The first is instant and enforces the rule for new rows. The second scans under a lock that
+lets traffic through. If validation fails, you have found pre-existing bad data — fix it,
+then validate again. The constraint is already protecting you from *new* violations while
+you clean up.
+
+### Changing a column type
+
+`ALTER TABLE ... ALTER COLUMN ... TYPE` usually rewrites the table and every dependent
+index, under `ACCESS EXCLUSIVE`. A few widening conversions are free (`varchar(50)` to
+`varchar(100)` or to `text`); most are not, and `int` to `bigint` is a full rewrite on the
+table everyone needs it on.
+
+Do it as expand/contract: add a new column of the new type, dual-write, backfill in batches,
+switch reads, drop the old one. Slower to write, and it does not take the table offline.
+
+### Renaming or dropping
+
+Never in the same deploy as the code change. Always expand/contract. A rename is a drop plus
+an add as far as the running application is concerned.
+
+For a drop, there is a useful intermediate step:
+
+```sql
+ALTER TABLE orders ALTER COLUMN legacy_ref DROP NOT NULL;  -- let new writes omit it
+-- deploy code that no longer writes it, wait a full rollback window, then:
+ALTER TABLE orders DROP COLUMN legacy_ref;
+```
+
+## Backfills
+
+Never one statement:
+
+```sql
+UPDATE users SET email_address = email;  -- locks every row, one huge transaction
+```
+
+On a large table this holds row locks for the duration, generates enormous WAL, blocks
+vacuum, and if it fails at 90% you have nothing.
+
+Batch it, keyed on the primary key so it is resumable:
+
+```sql
+WITH batch AS (
+  SELECT id FROM users
+  WHERE email_address IS NULL
+  ORDER BY id
+  LIMIT 5000
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE users u
+SET email_address = u.email
+FROM batch
+WHERE u.id = batch.id;
+```
+
+Run it in a loop until it affects zero rows, with a pause between batches. The properties
+that matter:
+
+- **Each batch is its own transaction.** Locks are held for milliseconds.
+- **Resumable.** The `IS NULL` predicate is the progress marker; a crash costs one batch.
+- **Throttled.** The sleep between batches gives autovacuum and replication room to keep up.
+- **`SKIP LOCKED`** avoids fighting live traffic for the same rows.
+
+Watch replication lag while it runs. A backfill that outruns your replicas turns a
+maintenance task into a read-availability incident.
+
+## Is this change safe? A decision path
+
+<Diagram
+  src="/diagrams/12-migration-decision"
+  alt="Decision flowchart for schema changes: additive changes, changes needing a long lock, changes touching existing rows, and removals that require expand and contract."
+  width={1920}
+  height={1345}
+  caption="The path that looks cheapest — rename or drop in one deploy — is the one that causes the outage."
+/>
+
+Four questions, in order:
+
+1. **Is it purely additive?** New table, new nullable column, new index. Ship it — but if it
+   is an index, `CONCURRENTLY` and outside a transaction.
+2. **Does it need a long lock or a table rewrite?** Type changes, `NOT NULL`, validated
+   constraints. Split into `NOT VALID` plus `VALIDATE`, or into expand/contract.
+3. **Does it touch existing rows?** Batched, resumable, throttled backfill. Never one
+   statement.
+4. **Does it remove or rename something the running code uses?** Never one deploy.
+   Expand/contract, with a rollback window between the last read switch and the drop.
+
+## Migration tooling discipline
+
+**Versioned, ordered, immutable.** Once a migration has run anywhere beyond your laptop, it
+is history. Fix it with a new migration; never edit the file.
+
+**One logical change per migration.** Easier to review, and when something fails at 3am you
+know exactly what was in flight.
+
+**Forward-only in production.** Write the `down` migration if your tool wants one, but do
+not plan to use it. Real recovery is a new forward migration plus a code rollback, because
+the `down` path is never tested against production data.
+
+**Separate schema migrations from data migrations.** Schema DDL is fast and transactional;
+backfills are long-running and need throttling and resumability. Running them through the
+same mechanism means your deploy pipeline blocks for an hour.
+
+**Review migrations like security code.** A migration is the one artifact where a
+five-character mistake is unrecoverable.
+
+## Rollback planning
+
+Ask, before writing the migration: *if I have to go back one version an hour from now, what
+breaks?*
+
+- **Additive change, code rolled back** — fine. The new column sits unused.
+- **Dropped column, code rolled back** — broken. Old code queries a column that is gone.
+  This is why the drop waits.
+- **Backfilled data, code rolled back** — usually fine, as long as the old code tolerates
+  the new values.
+
+Backups are not a rollback plan for a bad migration. Restoring loses every write since the
+backup. **Point-in-time recovery** narrows that to seconds, and only if you have tested a
+restore. An untested backup is a hypothesis.
+
+## Testing migrations
+
+Running a migration against an empty dev database proves the syntax and nothing else. What
+you actually need to know is how long it takes and what it locks at production scale.
+
+- Restore a production-size copy (anonymised) and time it there.
+- Assert that the previous application version still passes its tests against the new
+  schema — that is the expand/contract invariant, and it is mechanically checkable.
+- In staging, run the migration *while* load is running. A migration tested against an idle
+  database has not been tested against locks.
+
+## Watching the rollout
+
+During and right after:
+
+- **Lock waits** — `pg_stat_activity` filtered on `wait_event_type = 'Lock'`.
+- **Replication lag** — the first thing a backfill breaks.
+- **Error rate by version** — if old and new instances are both live, you need to know which
+  one is failing.
+- **Invalid indexes** — after any `CONCURRENTLY` build.
+
+Decide the abort condition *before* you start. "Roll back if error rate exceeds 1% for two
+minutes" is a plan; "keep an eye on it" is not.
+
+## Practice
+
+**Q: You add a column and run `ALTER TABLE orders ADD COLUMN x text;`. It hangs. Why, and what do you do?**
+
+It is waiting for `ACCESS EXCLUSIVE`, blocked by an open transaction holding a lock on the
+table. Worse, every query arriving after it is now queued behind it. Cancel it immediately,
+find the blocker with `pg_blocking_pids`, then retry with `lock_timeout` set.
+
+**Q: Why can't `CREATE INDEX CONCURRENTLY` run inside a transaction?**
+
+It needs multiple passes over the table with commits in between so that concurrent writes
+stay visible to it. That also means a failure leaves a partially built, invalid index that
+you must drop explicitly.
+
+**Q: A rename shipped as one migration plus one deploy. What is the window of breakage?**
+
+From the moment the migration commits until the last old instance is replaced. During a
+rolling deploy, old instances are still serving traffic and querying a column that no longer
+exists. Every one of their requests fails.
+
+**Q: Your backfill has been running for 40 minutes and replication lag is climbing. What now?**
+
+Stop it. It is resumable by design, so nothing is lost. Reduce the batch size, increase the
+pause, and restart. Lag is a read-availability problem and it affects users who are not
+involved in your migration at all.
+
+**Q: Why write the `NOT VALID` constraint first instead of just validating up front?**
+
+`NOT VALID` is instant and immediately protects against *new* bad rows, while `VALIDATE`
+does the slow scan under a lock that does not block reads or writes. Splitting them turns
+one long hard-locked operation into one instant operation plus one background one.
+
+## Recall checklist
+
+- [ ] State the rollback invariant in one sentence
+- [ ] The five steps of expand/contract, in order, and which one is irreversible
+- [ ] Why the drop goes in a separate deploy days later
+- [ ] Which lock `ALTER TABLE` takes and what it conflicts with
+- [ ] Why a waiting `ALTER` blocks queries that would not have conflicted
+- [ ] What `lock_timeout` buys you, and what it needs to be paired with
+- [ ] Why `ADD COLUMN ... DEFAULT 'x'` is cheap but `DEFAULT now()` is not
+- [ ] The three-step safe path to `NOT NULL`
+- [ ] Three consequences of `CREATE INDEX CONCURRENTLY`
+- [ ] How to find and clean up an invalid index
+- [ ] Why `NOT VALID` then `VALIDATE` beats a single validated constraint
+- [ ] Four properties a good backfill loop has
+- [ ] Why `SKIP LOCKED` belongs in a backfill
+- [ ] Why forward-only beats `down` migrations in production
+- [ ] Why a backup is not a rollback plan, and what is
+- [ ] Two things staging must do that an empty dev database cannot
+- [ ] Four signals to watch during a rollout, and why you set the abort condition first

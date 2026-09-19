@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How one migration stops every query</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Timeline &#183; Diagram Design</p>
+    <h1>How one migration stops every query</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lock-queue-dark-title lock-queue-dark-desc">
+      <title id="lock-queue-dark-title">How one migration stops every query</title>
+      <desc id="lock-queue-dark-desc">A slow SELECT holds ACCESS SHARE on the orders table, so an ALTER TABLE asking for ACCESS EXCLUSIVE has to wait; because PostgreSQL grants locks in request order, every query that arrives afterwards queues behind the waiting ALTER even though it would be compatible with the running SELECT, and the table stays unavailable until lock_timeout makes the migration give up.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <!-- pile-up zone -->
+      <rect x="404" y="240" width="232" height="180" rx="8" fill="rgba(255,90,90,0.07)" stroke="rgba(255,90,90,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="444" y="234" width="152" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="520" y="243" fill="#ff5a5a" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">EVERY QUERY QUEUES BEHIND IT</text>
+
+      <!-- conflict connector -->
+      <line x1="368" y1="136" x2="368" y2="168" stroke="#fafafa" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="376" y="140" width="76" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="414" y="149" fill="#fafafa" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CONFLICTS</text>
+
+      <!-- session names -->
+      <text x="32" y="108" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Analytics report</text>
+      <text x="32" y="124" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ACCESS SHARE</text>
+      <text x="32" y="192" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Migration</text>
+      <text x="32" y="208" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ACCESS EXCLUSIVE</text>
+      <text x="32" y="268" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Checkout read</text>
+      <text x="32" y="284" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ACCESS SHARE</text>
+      <text x="32" y="328" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Order write</text>
+      <text x="32" y="344" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ROW EXCLUSIVE</text>
+      <text x="32" y="388" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Dashboard read</text>
+      <text x="32" y="404" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ACCESS SHARE</text>
+
+      <!-- holder -->
+      <rect x="192" y="88" width="704" height="44" rx="6" fill="#0a0a0b"/>
+      <rect x="192" y="88" width="704" height="44" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="208" y="106" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace">SELECT &#8230; FROM orders</text>
+      <text x="208" y="121" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">granted &#183; holds the lock for five minutes</text>
+
+      <!-- waiting DDL -->
+      <rect x="368" y="172" width="264" height="44" rx="6" fill="#0a0a0b"/>
+      <rect x="368" y="172" width="264" height="44" rx="6" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="384" y="190" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace">ALTER TABLE orders ADD COLUMN</text>
+      <text x="384" y="205" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">waiting for ACCESS EXCLUSIVE</text>
+      <text x="648" y="198" fill="#fafafa" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">ABORTED</text>
+
+      <!-- blocked queue -->
+      <rect x="412" y="248" width="220" height="44" rx="6" fill="rgba(250,250,250,0.05)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="428" y="274" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">blocked, never ran</text>
+      <rect x="456" y="308" width="176" height="44" rx="6" fill="rgba(250,250,250,0.05)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="472" y="334" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">blocked</text>
+      <rect x="500" y="368" width="132" height="44" rx="6" fill="rgba(250,250,250,0.05)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="516" y="394" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">blocked</text>
+
+      <!-- drain -->
+      <text x="736" y="238" fill="#fafafa" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">QUEUE DRAINS</text>
+      <rect x="648" y="248" width="176" height="164" rx="6" fill="#0a0a0b"/>
+      <rect x="648" y="248" width="176" height="164" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="736" y="314" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">All three run</text>
+      <text x="736" y="332" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ACCESS SHARE granted</text>
+      <text x="736" y="348" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">after a 3s stall</text>
+
+      <!-- timeout marker -->
+      <line x1="632" y1="424" x2="632" y2="448" stroke="#ff5a5a" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="368" y="444" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ALTER ARRIVES</text>
+      <text x="632" y="444" fill="#ff5a5a" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">LOCK_TIMEOUT</text>
+
+      <!-- time axis -->
+      <line x1="192" y1="456" x2="928" y2="456" stroke="rgba(227,227,232,0.22)" stroke-width="1" marker-end="url(#arrow-dark)"/>
+      <line x1="192" y1="450" x2="192" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="280" y1="450" x2="280" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="368" y1="450" x2="368" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="456" y1="450" x2="456" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="544" y1="450" x2="544" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="632" y1="450" x2="632" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="720" y1="450" x2="720" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="808" y1="450" x2="808" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="896" y1="450" x2="896" y2="462" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <circle cx="368" cy="456" r="4" fill="#a1a1ab"/>
+      <circle cx="632" cy="456" r="5" fill="#ff5a5a"/>
+      <text x="192" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">0s</text>
+      <text x="280" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">1s</text>
+      <text x="368" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">2s</text>
+      <text x="456" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">3s</text>
+      <text x="544" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">4s</text>
+      <text x="632" y="478" fill="#ff5a5a" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">5s</text>
+      <text x="720" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">6s</text>
+      <text x="808" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">7s</text>
+      <text x="896" y="478" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">8s</text>
+
+      <!-- the conflicting-lock fact -->
+      <text x="32" y="540" fill="#fafafa" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">ACCESS EXCLUSIVE conflicts with every other lock mode &#8212;</text>
+      <text x="32" y="562" fill="#fafafa" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">including the ACCESS SHARE a plain SELECT takes.</text>
+
+      <!-- the fix -->
+      <rect x="592" y="504" width="336" height="96" rx="6" fill="#0a0a0b"/>
+      <rect x="592" y="504" width="336" height="96" rx="6" fill="rgba(250,250,250,0.03)" stroke="rgba(250,250,250,0.30)" stroke-width="1"/>
+      <text x="608" y="532" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">The fix</text>
+      <text x="608" y="554" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace">SET lock_timeout = '3s';</text>
+      <text x="608" y="570" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">the migration gives up and retries</text>
+      <text x="608" y="586" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">instead of holding the door shut</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="140" y="643" width="24" height="12" rx="2" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="172" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Lock granted</text>
+      <rect x="276" y="643" width="24" height="12" rx="2" fill="rgba(250,250,250,0.05)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="308" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Waiting on a lock</text>
+      <rect x="444" y="643" width="24" height="12" rx="2" fill="rgba(255,90,90,0.07)" stroke="rgba(255,90,90,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="476" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Pile-up</text>
+      <line x1="580" y1="649" x2="604" y2="649" stroke="#ff5a5a" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="612" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Timeout fires</text>
+      <rect x="740" y="643" width="24" height="12" rx="2" fill="rgba(250,250,250,0.03)" stroke="rgba(250,250,250,0.30)" stroke-width="1"/>
+      <text x="772" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Mitigation</text>
+    </svg>
+
+  </div>
+</body>
+</html>

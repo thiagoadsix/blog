@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which queries can use a composite index</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Matrix &#183; Diagram Design</p>
+    <h1>Which queries can use a composite index</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="index-prefix-dark-title index-prefix-dark-desc">
+      <title id="index-prefix-dark-title">Which queries can use a composite index</title>
+      <desc id="index-prefix-dark-desc">Six WHERE clauses matched against a three-column composite index on orders, showing how far into the index each one can seek: equality predicates consume the prefix columns left to right, the first range predicate ends the seek, and a missing leading column or a cast over the column defeats the index entirely.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <text x="32" y="48" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">THE INDEX</text>
+      <text x="32" y="72" fill="#fafafa" font-size="11" font-family="'Geist Mono', monospace">CREATE INDEX ON orders (tenant_id, status, created_at)</text>
+
+      <!-- header row -->
+      <rect x="32" y="104" width="352" height="48" rx="6" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="126" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Predicate</text>
+      <text x="48" y="142" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">what the query filters on</text>
+
+      <rect x="400" y="104" width="88" height="48" rx="6" fill="#fafafa"/>
+      <text x="444" y="124" fill="#0a0a0b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">tenant_id</text>
+      <text x="444" y="140" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">column 1</text>
+
+      <rect x="500" y="104" width="88" height="48" rx="6" fill="#fafafa"/>
+      <text x="544" y="124" fill="#0a0a0b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">status</text>
+      <text x="544" y="140" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">column 2</text>
+
+      <rect x="600" y="104" width="88" height="48" rx="6" fill="#fafafa"/>
+      <text x="644" y="124" fill="#0a0a0b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">created_at</text>
+      <text x="644" y="140" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">column 3</text>
+
+      <rect x="704" y="104" width="224" height="48" rx="6" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="126" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Seek reach</text>
+      <text x="720" y="142" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">how much of the index is used</text>
+
+      <!-- row 0 -->
+      <rect x="32" y="168" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="195" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">tenant_id = ?</text>
+      <rect x="400" y="168" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="444" y="187" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="444" y="201" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="500" y="168" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="544" y="194" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="600" y="168" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="644" y="194" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="704" y="168" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="188" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Seeks column 1</text>
+      <text x="720" y="202" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">prefix of length 1</text>
+
+      <!-- row 1 -->
+      <rect x="32" y="224" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="251" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">tenant_id = ? AND status = ?</text>
+      <rect x="400" y="224" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="444" y="243" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="444" y="257" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="500" y="224" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="544" y="243" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="544" y="257" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="600" y="224" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="644" y="250" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="704" y="224" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="244" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Seeks columns 1 and 2</text>
+      <text x="720" y="258" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">prefix of length 2</text>
+
+      <!-- row 2 -->
+      <rect x="32" y="280" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="307" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">tenant_id = ? AND status = ? AND created_at &gt; ?</text>
+      <rect x="400" y="280" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="444" y="299" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="444" y="313" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="500" y="280" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="544" y="299" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="544" y="313" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="600" y="280" width="88" height="44" rx="4" fill="rgba(250,250,250,0.10)" stroke="rgba(250,250,250,0.30)" stroke-width="1"/>
+      <text x="644" y="299" fill="#fafafa" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&gt;</text>
+      <text x="644" y="313" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">range</text>
+      <rect x="704" y="280" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="300" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Seeks all three</text>
+      <text x="720" y="314" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">the range ends the seek</text>
+
+      <!-- row 3 -->
+      <rect x="32" y="336" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="363" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">status = ?</text>
+      <rect x="400" y="336" width="88" height="44" rx="4" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1.4"/>
+      <text x="444" y="355" fill="#ff5a5a" font-size="9" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">no prefix</text>
+      <text x="444" y="369" fill="#ff5a5a" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.85">cannot seek</text>
+      <rect x="500" y="336" width="88" height="44" rx="4" fill="rgba(161,161,171,0.12)" stroke="#8b8b95" stroke-width="1"/>
+      <text x="544" y="362" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">filter</text>
+      <rect x="600" y="336" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="644" y="362" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="704" y="336" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="356" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">No seek</text>
+      <text x="720" y="370" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">leading column is missing</text>
+
+      <!-- row 4 -->
+      <rect x="32" y="392" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="419" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">tenant_id = ? AND created_at &gt; ?</text>
+      <rect x="400" y="392" width="88" height="44" rx="4" fill="#fafafa"/>
+      <text x="444" y="411" fill="#0a0a0b" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">=</text>
+      <text x="444" y="425" fill="#0a0a0b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.75">seek</text>
+      <rect x="500" y="392" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="544" y="418" fill="#8b8b95" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">skipped</text>
+      <rect x="600" y="392" width="88" height="44" rx="4" fill="rgba(161,161,171,0.12)" stroke="#8b8b95" stroke-width="1"/>
+      <text x="644" y="418" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">filter</text>
+      <rect x="704" y="392" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="412" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Seeks column 1 only</text>
+      <text x="720" y="426" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">created_at is filtered, not sought</text>
+
+      <!-- row 5 -->
+      <rect x="32" y="448" width="352" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="48" y="475" fill="#fafafa" font-size="10" font-family="'Geist Mono', monospace">tenant_id::text = ?</text>
+      <rect x="400" y="448" width="88" height="44" rx="4" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1.4"/>
+      <text x="444" y="467" fill="#ff5a5a" font-size="9" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">cast</text>
+      <text x="444" y="481" fill="#ff5a5a" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" opacity="0.85">not sargable</text>
+      <rect x="500" y="448" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="544" y="474" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="600" y="448" width="88" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="644" y="474" fill="#8b8b95" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">&#8212;</text>
+      <rect x="704" y="448" width="224" height="44" rx="4" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="0.8"/>
+      <text x="720" y="468" fill="#fafafa" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Not sargable</text>
+      <text x="720" y="482" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace">the cast hides the column</text>
+
+      <!-- the rule -->
+      <rect x="32" y="528" width="896" height="56" rx="8" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.10)" stroke-width="1"/>
+      <text x="56" y="552" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">THE RULE</text>
+      <text x="56" y="574" fill="#fafafa" font-size="15" font-style="italic" font-family="'Instrument Serif', serif">equality predicates consume prefix columns left to right, and the first range predicate ends the seek</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="112" y="643" width="24" height="12" rx="2" fill="#fafafa"/>
+      <text x="144" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Seek</text>
+      <rect x="232" y="643" width="24" height="12" rx="2" fill="rgba(250,250,250,0.10)" stroke="rgba(250,250,250,0.30)" stroke-width="1"/>
+      <text x="264" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Range ends seek</text>
+      <rect x="416" y="643" width="24" height="12" rx="2" fill="rgba(161,161,171,0.12)" stroke="#8b8b95" stroke-width="1"/>
+      <text x="448" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Filter only</text>
+      <rect x="568" y="643" width="24" height="12" rx="2" fill="#0a0a0b" stroke="rgba(250,250,250,0.10)" stroke-width="1"/>
+      <text x="600" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Unused</text>
+      <rect x="696" y="643" width="24" height="12" rx="2" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="728" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Index defeated</text>
+    </svg>
+
+  </div>
+</body>
+</html>

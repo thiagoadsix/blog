@@ -1,0 +1,507 @@
+---
+slug: notes/api-design
+title: Designing APIs
+description: HTTP semantics, idempotency, pagination, versioning and error contracts — the parts of API design that come up when someone asks you to defend a decision.
+order: 1
+---
+
+Most API questions are not really about REST. They are about what happens when the
+network fails halfway through, when the client retries, when the data set grows past
+what a single response can carry, and when you need to change the shape of something
+that other teams already depend on.
+
+This note is organised around those failure modes rather than around a style guide.
+
+## Safe, idempotent, neither
+
+Three properties, and almost every retry decision follows from them.
+
+- **Safe** — the request does not change server state. `GET`, `HEAD`, `OPTIONS`.
+- **Idempotent** — sending it N times leaves the same state as sending it once.
+  `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`.
+- **Neither** — `POST` and `PATCH`.
+
+Safe implies idempotent. The reverse is not true: `DELETE /orders/42` changes state, but
+running it five times leaves the same state as running it once.
+
+This matters because **anything not idempotent cannot be safely retried by a client, a
+proxy, or a load balancer.** A timeout does not tell the client whether the request was
+applied. If the operation is idempotent, the client can just send it again. If it is not,
+retrying might charge a card twice.
+
+`PUT` is idempotent because it carries the complete desired state. `PATCH` usually is not,
+because it carries a delta — `PATCH /accounts/1 {"balance_delta": -10}` applied twice
+removes twenty. A `PATCH` that carries absolute values (`{"status": "cancelled"}`) is
+idempotent in practice, but the method does not promise it, so intermediaries will not
+assume it.
+
+<Callout type="warning">
+  A `DELETE` that returns `204` the first time and `404` the second is still idempotent.
+  Idempotency is about resulting **state**, not about identical responses.
+</Callout>
+
+### Status codes that carry information
+
+You do not need all of them. You need the ones whose meaning is load-bearing.
+
+| Code | Use it when |
+| --- | --- |
+| `200` | Success with a body |
+| `201` | A resource was created — include a `Location` header |
+| `202` | Accepted, not finished — see the async section below |
+| `204` | Success, deliberately no body |
+| `400` | The request is malformed — it will never succeed as written |
+| `401` | Not authenticated — who are you? |
+| `403` | Authenticated, not allowed — I know who you are, and no |
+| `404` | Not found, or hidden from this caller on purpose |
+| `409` | Conflict with current state — duplicate key, version mismatch |
+| `412` | A precondition (`If-Match`) failed |
+| `422` | Syntactically valid, semantically wrong — the shape parses, the values do not |
+| `429` | Rate limited — include `Retry-After` |
+| `5xx` | You broke it, not the caller |
+
+The `400` versus `422` line is the one people argue about. A defensible rule: `400` when
+you could not parse it, `422` when you parsed it fine and the values violate a business
+rule. What matters in an interview is that you have *a* rule and apply it consistently.
+
+The `403` versus `404` line is a security decision. Returning `403` on a resource the
+caller cannot see confirms that it exists. For tenant-scoped resources, `404` leaks less.
+
+### Practice
+
+**Q: A client sends `POST /orders`, times out, and retries. You now have two orders. Whose fault is it?**
+
+Nobody's, and that is the point. `POST` is not idempotent, so the client was within its
+rights to retry, and the server was within its rights to create a second order. The
+protocol does not solve this — you have to, with an idempotency key.
+
+**Q: Why is `PUT /users/7` idempotent but `POST /users` not?**
+
+`PUT` names the resource, so the second call overwrites the same address. `POST` asks the
+server to create something and assign an identity, so the second call creates a second
+thing.
+
+## Idempotency keys
+
+A client-generated key, unique per logical operation, sent on requests that are not
+naturally idempotent.
+
+<Diagram
+  src="/diagrams/01-idempotency-key"
+  alt="Sequence diagram of an idempotency key: first attempt inserts the key, charges the provider and loses the response; the retry hits a unique violation and replays the stored response without charging again."
+  width={1920}
+  height={1345}
+  caption="The unique index on the key is what makes the retry safe — not the application check."
+/>
+
+```http
+POST /payments HTTP/1.1
+Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+Content-Type: application/json
+
+{"amount_cents": 4000, "currency": "USD", "order_id": 812}
+```
+
+The server side, in one transaction:
+
+```sql
+CREATE TABLE idempotency_keys (
+  key             text PRIMARY KEY,
+  request_hash    text NOT NULL,
+  response_status int,
+  response_body   jsonb,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+```
+
+1. `INSERT` the key. If it violates the primary key, this is a replay — read the stored
+   response and return it.
+2. If the insert succeeded, do the work.
+3. Store the status and body against the key before committing.
+
+Three details that separate a real answer from a memorised one:
+
+**Store the request hash.** If the same key arrives with a *different* body, that is a
+client bug, not a retry. Return `422` rather than silently replaying an unrelated
+response.
+
+**Handle the in-flight case.** The first request may still be running when the retry
+arrives. The row exists but has no response yet. Return `409` and let the client retry
+later — this is the honest answer, and better than blocking a connection.
+
+**Expire the keys.** They are not permanent records. A 24-hour or 7-day retention window
+with a cleanup job is normal. Say this out loud; unbounded growth is a real operational
+cost.
+
+<Callout type="default">
+  **How to say it:** "The client sends a key, the server makes that key unique in the
+  database, and the uniqueness constraint — not an application-level check — is what
+  guarantees the operation runs once."
+</Callout>
+
+### Practice
+
+**Q: Why not just check "does a payment already exist for this order?" instead?**
+
+Two concurrent requests both run the check, both see nothing, both insert. A read-then-write
+check is not atomic. The unique constraint is.
+
+**Q: Where should the key be generated?**
+
+The client, before the first attempt, and reused across all retries of that attempt. If
+the server generates it, a retry gets a new key and the whole mechanism does nothing.
+
+## Pagination
+
+<Diagram
+  src="/diagrams/02-pagination"
+  alt="Comparison of offset and cursor pagination: offset walks and discards every row before the window, cursor seeks directly into the index."
+  width={1920}
+  height={1345}
+  caption="OFFSET makes the database read and throw away everything before the window. A cursor seeks."
+/>
+
+### Why OFFSET degrades
+
+```sql
+SELECT * FROM orders ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
+```
+
+The database cannot jump to row 10,000. It reads 10,020 rows in sort order and discards
+10,000 of them. Page 1 is instant, page 500 is a table scan. Cost grows linearly with page
+number, which means your slowest queries are the ones nobody looks at — until a crawler,
+an export job, or a bored user walks the whole list.
+
+There is a correctness problem too. If rows are inserted while a user pages, the window
+shifts underneath them: items get skipped or shown twice.
+
+### Keyset (cursor) pagination
+
+Remember where you stopped and ask for what comes after it:
+
+```sql
+SELECT * FROM orders
+WHERE (created_at, id) < (:last_created_at, :last_id)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+```
+
+With an index on `(created_at DESC, id DESC)`, the database seeks straight to the position
+and reads 20 rows. Page 500 costs the same as page 1.
+
+Two requirements people forget:
+
+- **The sort key must be unique.** `created_at` alone is not — two rows sharing a timestamp
+  will be skipped or repeated at the page boundary. The tuple `(created_at, id)` is unique,
+  and the row comparison above compares it as a tuple, not column by column.
+- **The cursor is opaque.** Base64-encode it and return it as `next_cursor`. Once clients
+  start parsing it, you can never change the sort key.
+
+```json
+{
+  "data": [],
+  "next_cursor": "eyJjcmVhdGVkX2F0IjoiMjAyNi0wMS0wMlQxMDowMDowMFoiLCJpZCI6ODEyfQ=="
+}
+```
+
+The trade-off is real: you lose "jump to page 47" and you lose a cheap total count. If the
+product genuinely needs numbered pages over a small, bounded list, offset is fine. Say the
+trade-off rather than declaring cursors universally correct.
+
+### Practice
+
+**Q: Your list endpoint is fast in staging and slow in production. Same query. Why?**
+
+Staging has a thousand rows; production has ten million. `OFFSET` cost scales with the
+offset, and staging never reaches a deep page.
+
+**Q: A user reports seeing the same order on page 2 and page 3. What happened?**
+
+New rows were inserted above the window between requests, shifting everything down by one.
+Offset pagination over a table with concurrent inserts, sorted by a non-stable key.
+
+## Versioning and backward compatibility
+
+### What actually breaks a client
+
+**Safe (additive):** adding an endpoint, adding an optional request field, adding a
+response field, adding a new value to an enum *that clients only display*.
+
+**Breaking:** removing or renaming a field, changing a type (`"42"` → `42`), making an
+optional request field required, tightening validation, changing a default, changing
+pagination semantics, adding an enum value clients must *branch on*.
+
+That last pair is the subtle one. Adding `status: "partially_refunded"` is additive to a
+client that prints the status and breaking for a client with a switch statement over three
+known values. Whether an enum is extensible is part of your contract, and you should state
+it in the docs from day one.
+
+### Strategies, in the order most teams should try them
+
+1. **Don't version.** Only make additive changes. This covers more ground than people
+   expect, and it is free.
+2. **Version the representation, not the API** — `Accept: application/vnd.acme.v2+json`.
+   Purist, and awkward to test from a browser or a curl one-liner.
+3. **Version in the path** — `/v2/orders`. Ugly, obvious, easy to route, easy to debug.
+   Most large public APIs land here for exactly those reasons.
+
+A useful framing: URL versioning is a *routing* decision and media-type versioning is a
+*content negotiation* decision. Both work. Pick one and never mix.
+
+### Deprecation
+
+A version is not retired when you announce it. It is retired when traffic reaches zero.
+That means you need per-version, per-client usage metrics before you can set a date. State
+the sunset in a header so it shows up in client logs:
+
+```http
+Deprecation: Sun, 01 Nov 2026 00:00:00 GMT
+Sunset: Sun, 01 Feb 2027 00:00:00 GMT
+Link: <https://api.acme.com/docs/v2-migration>; rel="deprecation"
+```
+
+### Practice
+
+**Q: You need to rename `user_name` to `username`. How, without breaking anyone?**
+
+Add `username` alongside `user_name` and populate both. Accept either on writes, preferring
+the new one. Mark the old field deprecated in the docs and in a response header. Watch
+usage. Remove it when it reaches zero — which is the same expand/contract shape as a
+database migration.
+
+## Error contracts
+
+Errors are part of your API surface. Clients branch on them, so they are as much a
+compatibility commitment as your success payloads.
+
+```json
+{
+  "type": "https://api.acme.com/errors/insufficient-funds",
+  "title": "Insufficient funds",
+  "status": 422,
+  "detail": "Account 812 has 1200 cents available, 4000 requested.",
+  "instance": "/payments/9f2c",
+  "code": "insufficient_funds",
+  "errors": [
+    { "field": "amount_cents", "code": "exceeds_balance" }
+  ]
+}
+```
+
+That is RFC 9457 (Problem Details) plus a stable machine-readable `code`. The important
+properties:
+
+- **A stable code**, separate from the human message. Clients branch on the code. The
+  message is for humans and may be rewritten or translated at any time.
+- **Field-level detail** for validation errors, so a form can highlight the right input.
+- **No leaked internals.** Never return a raw SQL error, a stack trace, or a constraint
+  name from the driver. `duplicate key value violates unique constraint
+  "one_active_price"` is a database implementation detail; translate it at the boundary.
+
+<Callout type="danger">
+  A `200 OK` with `{"success": false}` in the body is the most common broken error
+  contract. It defeats HTTP caching, proxy behaviour, client retry logic, and every
+  monitoring dashboard that counts non-2xx responses.
+</Callout>
+
+## Authentication and authorization
+
+Enough to speak confidently, without pretending to be an identity specialist.
+
+**Authentication** is who you are. **Authorization** is what you may do. Different
+failures: `401` and `403`.
+
+**Token choices.** Opaque tokens are random strings looked up server-side — revocation is
+instant, but every request costs a lookup. JWTs are self-describing and verified by
+signature, so no lookup is needed, but they **cannot be revoked before expiry** without
+reintroducing a lookup (a denylist), which gives back the property you chose JWTs to avoid.
+The usual compromise: short-lived access tokens (5–15 minutes) plus a long-lived refresh
+token that *is* checked server-side.
+
+**Where tokens live in a browser.** `localStorage` is readable by any XSS on the page. An
+`HttpOnly; Secure; SameSite` cookie is not, but it is submitted automatically, which is
+what makes CSRF possible — so you need a CSRF token or strict `SameSite`. There is no
+option without a trade-off; know which one you took.
+
+**Scopes and permissions.** A scope says what a *token* may do. It does not say what the
+*user* may do to a specific row. `orders:read` does not mean "read order 812" — you still
+have to check tenancy on every query. Saying this unprompted signals you have shipped
+multi-tenant software.
+
+## Rate limiting
+
+Return `429` with the numbers the client needs to behave:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+RateLimit-Limit: 1000
+RateLimit-Remaining: 0
+RateLimit-Reset: 30
+```
+
+Token bucket is the usual algorithm: a bucket refills at a steady rate and each request
+takes a token. It permits short bursts (up to bucket size) while bounding the sustained
+rate — which matches how real clients behave better than a fixed window does.
+
+Fixed windows have a well-known edge: a client can send the full quota at 11:59:59 and the
+full quota again at 12:00:00, doubling the intended rate across the boundary. Sliding
+windows fix it at the cost of more state.
+
+Limit per API key or per tenant, not per IP. Mobile carriers and corporate networks put
+thousands of users behind one address.
+
+## Caching and optimistic concurrency
+
+The same mechanism solves two problems.
+
+```http
+GET /orders/812
+→ 200 OK
+  ETag: "a1b2c3"
+```
+
+**Caching** — the client sends `If-None-Match: "a1b2c3"` and you answer `304 Not Modified`
+with no body when it still matches.
+
+**Lost update prevention** — the client sends `If-Match: "a1b2c3"` on a write. If the
+resource changed since, you answer `412 Precondition Failed` instead of silently
+overwriting someone else's edit. This is optimistic concurrency control, and it is the HTTP
+expression of the same idea as a `version` column.
+
+Without it, two people editing the same record produce last-write-wins, and the first
+person's change vanishes with no error anywhere.
+
+## Long-running work
+
+Do not hold a connection open for two minutes. Accept the work and hand back somewhere to
+look:
+
+```http
+POST /exports
+→ 202 Accepted
+  Location: /exports/9f2c
+
+GET /exports/9f2c
+→ 200 OK
+  {"status": "running", "progress": 0.42}
+
+GET /exports/9f2c
+→ 200 OK
+  {"status": "succeeded", "result_url": "https://..."}
+```
+
+The status resource is a real resource with its own lifecycle. This also gives retries
+somewhere safe to land: combined with an idempotency key, a retried `POST /exports` returns
+the *same* `Location` instead of starting a second export.
+
+## Webhooks
+
+<Diagram
+  src="/diagrams/03-webhook-delivery"
+  alt="State machine for webhook delivery: pending, delivering, delivered, retry with exponential backoff, and dead letter after the attempt limit."
+  width={1920}
+  height={1345}
+  caption="At-least-once delivery. The consumer has to be idempotent, because the producer cannot be exactly-once."
+/>
+
+You are now a client of someone else's flaky endpoint. Four things to get right:
+
+**Sign the payload.** HMAC-SHA256 over the raw body plus a timestamp, sent as a header. The
+timestamp prevents replay; the receiver rejects anything older than a few minutes. The
+receiver must verify against the **raw bytes**, because re-serialising the JSON changes
+them.
+
+**Retry with exponential backoff and a cap.** Something like 1m, 5m, 25m, 2h, then a dead
+letter queue. Add jitter so a recovering consumer is not hit by every pending delivery
+simultaneously.
+
+**Deliver at least once, never exactly once.** You cannot distinguish "the consumer did not
+receive it" from "the consumer received it and the acknowledgement was lost." So you retry,
+and duplicates happen. Include a stable `event_id` and tell consumers to deduplicate on it.
+
+**Order is not guaranteed.** Retries reorder events by definition. Either include enough
+state in each event that order does not matter, or include a sequence number and let
+consumers discard stale ones.
+
+<Callout type="default">
+  **How to say it:** "Webhooks are at-least-once. The producer signs and retries with
+  backoff; the consumer deduplicates on event id and tolerates out-of-order arrival.
+  Exactly-once delivery over an unreliable network isn't available — exactly-once
+  *processing* is, and it's the consumer's job."
+</Callout>
+
+## Bulk endpoints and partial failure
+
+The moment you accept an array, you have to answer: what if item 7 fails?
+
+**All-or-nothing** — wrap it in a transaction, fail the whole request, return `400`. Simple
+to reason about, painful for a client submitting 500 items where one is bad.
+
+**Per-item results** — return `207 Multi-Status` (or `200` with a result array) where each
+entry carries its own status:
+
+```json
+{
+  "results": [
+    { "index": 0, "status": 201, "id": "ord_1" },
+    { "index": 1, "status": 422, "code": "invalid_currency" }
+  ]
+}
+```
+
+Either is defensible. What is not defensible is returning `200` and quietly dropping the
+failures. Pick one, document it, and make retrying the failed subset possible — which
+means per-item idempotency keys, not one key for the batch.
+
+## REST, GraphQL, gRPC
+
+A short, honest comparison rather than advocacy.
+
+**REST/HTTP+JSON.** Universal tooling, cacheable by URL, debuggable with curl. Tends toward
+over-fetching (you get the whole resource) and under-fetching (a screen needs four
+requests).
+
+**GraphQL.** The client asks for exactly the fields it needs, which genuinely helps
+client-heavy products with many screen shapes. The costs are real: HTTP caching mostly
+stops working because everything is a `POST` to one URL; the N+1 problem moves into your
+resolvers and needs batching (DataLoader) to stay survivable; and query cost analysis
+becomes a security requirement, because a nested query is a denial-of-service vector.
+
+**gRPC.** Binary protobuf over HTTP/2, generated clients, streaming, and a schema that is
+enforced rather than documented. Excellent between your own services. Awkward from a
+browser without a proxy, and harder to debug by hand.
+
+The framing that lands: REST for public and partner APIs, gRPC between internal services,
+GraphQL when one API serves many differently-shaped clients and you are prepared to own
+the caching and cost-analysis work it moves onto you.
+
+## Contract first
+
+Write the OpenAPI (or protobuf) definition before the handler. Generate the client from it.
+Validate requests and responses against it in tests. Diff it in CI and fail the build on a
+breaking change.
+
+This turns "don't break the contract" from a code-review convention into something the
+pipeline enforces, and it is a strong thing to describe in an interview because it is a
+process answer, not a trivia answer.
+
+## Recall checklist
+
+Cover the right column and see if you can produce it.
+
+- [ ] Which methods are safe, which are idempotent, and why it matters for retries
+- [ ] Why `PATCH` usually is not idempotent
+- [ ] The three steps of idempotency-key handling, and why the unique constraint does the work
+- [ ] What happens when the same key arrives with a different body
+- [ ] Why `OFFSET 10000` is slow, in terms of what the database physically does
+- [ ] Why a keyset cursor needs a unique sort key
+- [ ] Three changes that are additive and three that are breaking
+- [ ] Why you cannot pick a sunset date without per-client usage metrics
+- [ ] Why `200` with `{"success": false}` is a broken error contract
+- [ ] The revocation trade-off between JWTs and opaque tokens
+- [ ] Token bucket versus fixed window, and the boundary burst problem
+- [ ] `If-None-Match` versus `If-Match` — caching versus lost-update prevention
+- [ ] Why webhook delivery is at-least-once and what that obliges the consumer to do
+- [ ] Two defensible answers for bulk partial failure
+- [ ] One real cost of GraphQL and one real cost of gRPC

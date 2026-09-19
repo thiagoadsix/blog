@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why cursor pagination survives page 500</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Data flow &#183; Diagram Design</p>
+    <h1>Why cursor pagination survives page 500</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pagination-dark-title pagination-dark-desc">
+      <title id="pagination-dark-title">Why cursor pagination survives page 500</title>
+      <desc id="pagination-dark-desc">Two ways to fetch page 501 of the same index. The offset query walks and throws away the first ten thousand rows before it reaches the twenty it returns, so every page costs more than the last. The keyset cursor seeks straight to the last row it saw, reads only those twenty rows, and stays anchored when a new row is inserted between page loads.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <!-- band dividers -->
+      <line x1="32" y1="200" x2="928" y2="200" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <line x1="32" y1="400" x2="928" y2="400" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+
+      <!-- arrows first -->
+      <line x1="320" y1="140" x2="760" y2="140" stroke="#ff5a5a" stroke-width="1.5" marker-end="url(#arrow-accent-dark)"/>
+      <line x1="800" y1="356" x2="800" y2="306" stroke="#fafafa" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+      <!-- arrow labels -->
+      <rect x="492" y="120" width="96" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="540" y="129" fill="#ff5a5a" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">WALK + DISCARD</text>
+
+      <rect x="812" y="320" width="40" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="832" y="329" fill="#fafafa" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SEEK</text>
+
+      <!-- band 01 index strip -->
+      <rect x="320" y="72" width="436" height="44" rx="6" fill="rgba(255,90,90,0.12)" stroke="rgba(255,90,90,0.50)" stroke-width="1"/>
+      <line x1="340" y1="80" x2="340" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="372" y1="80" x2="372" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="404" y1="80" x2="404" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="436" y1="80" x2="436" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="468" y1="80" x2="468" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="500" y1="80" x2="500" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="532" y1="80" x2="532" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="564" y1="80" x2="564" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="596" y1="80" x2="596" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="628" y1="80" x2="628" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="660" y1="80" x2="660" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="692" y1="80" x2="692" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <line x1="724" y1="80" x2="724" y2="108" stroke="rgba(255,90,90,0.50)" stroke-width="0.8"/>
+      <rect x="472" y="88" width="132" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="538" y="98" fill="#ff5a5a" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">READ, THEN THROWN AWAY</text>
+
+      <rect x="760" y="72" width="80" height="44" rx="6" fill="#0a0a0b"/>
+      <rect x="760" y="72" width="80" height="44" rx="6" fill="rgba(250,250,250,0.05)" stroke="#fafafa" stroke-width="1"/>
+      <text x="800" y="98" fill="#fafafa" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">20 ROWS</text>
+
+      <rect x="844" y="72" width="84" height="44" rx="6" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="886" y="98" fill="#8b8b95" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">REST</text>
+
+      <text x="538" y="64" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ROWS 1 &#8211; 10,000</text>
+      <text x="800" y="64" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">PAGE 501</text>
+
+      <!-- band 02 index strip -->
+      <rect x="320" y="260" width="436" height="44" rx="6" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="340" y1="268" x2="340" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="372" y1="268" x2="372" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="404" y1="268" x2="404" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="436" y1="268" x2="436" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="468" y1="268" x2="468" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="500" y1="268" x2="500" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="532" y1="268" x2="532" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="564" y1="268" x2="564" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="596" y1="268" x2="596" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="628" y1="268" x2="628" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="660" y1="268" x2="660" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="692" y1="268" x2="692" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <line x1="724" y1="268" x2="724" y2="296" stroke="rgba(227,227,232,0.22)" stroke-width="0.8"/>
+      <rect x="506" y="276" width="64" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="538" y="286" fill="#8b8b95" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">NEVER READ</text>
+
+      <rect x="760" y="260" width="80" height="44" rx="6" fill="#0a0a0b"/>
+      <rect x="760" y="260" width="80" height="44" rx="6" fill="rgba(250,250,250,0.05)" stroke="#fafafa" stroke-width="1"/>
+      <text x="800" y="286" fill="#fafafa" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">20 ROWS</text>
+
+      <rect x="844" y="260" width="84" height="44" rx="6" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="886" y="286" fill="#8b8b95" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">REST</text>
+
+      <text x="538" y="252" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ROWS 1 &#8211; 10,000</text>
+      <text x="800" y="252" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">PAGE 501</text>
+
+      <!-- query cards -->
+      <rect x="32" y="56" width="240" height="88" rx="6" fill="#0a0a0b"/>
+      <rect x="32" y="56" width="240" height="88" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <rect x="44" y="66" width="36" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="62" y="75" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SQL</text>
+      <text x="152" y="100" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Offset pagination</text>
+      <text x="152" y="118" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">LIMIT 20 OFFSET 10000</text>
+      <text x="152" y="134" fill="#8b8b95" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">reads 10,020 rows</text>
+
+      <rect x="32" y="244" width="240" height="88" rx="6" fill="#0a0a0b"/>
+      <rect x="32" y="244" width="240" height="88" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <rect x="44" y="254" width="36" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="62" y="263" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SQL</text>
+      <text x="152" y="288" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cursor pagination</text>
+      <text x="152" y="306" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">WHERE (created_at, id) &lt;</text>
+      <text x="152" y="322" fill="#8b8b95" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">reads 20 rows</text>
+
+      <!-- band captions -->
+      <text x="320" y="172" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">cost grows with every page</text>
+      <text x="320" y="376" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">cost is the same at page 1 or page 501</text>
+      <text x="800" y="376" fill="#8b8b95" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">(:last_ts, :last_id)</text>
+
+      <!-- band 03 insert panels -->
+      <rect x="32" y="452" width="432" height="120" rx="8" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="48" y="464" width="52" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="74" y="473" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">OFFSET</text>
+      <text x="48" y="498" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Window slides</text>
+      <rect x="48" y="508" width="44" height="28" rx="4" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="70" y="526" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">NEW</text>
+      <rect x="96" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="144" y="508" width="44" height="28" rx="4" fill="rgba(250,250,250,0.10)" stroke="#fafafa" stroke-width="1.4"/>
+      <text x="166" y="526" fill="#fafafa" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DUP</text>
+      <rect x="192" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="240" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="288" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="336" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="384" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="48" y="556" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">page 2 shows one row twice</text>
+
+      <rect x="496" y="452" width="432" height="120" rx="8" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="512" y="464" width="52" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="538" y="473" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CURSOR</text>
+      <text x="512" y="498" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Window holds</text>
+      <text x="652" y="496" fill="#fafafa" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ANCHOR</text>
+      <line x1="652" y1="502" x2="652" y2="544" stroke="#fafafa" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <rect x="512" y="508" width="44" height="28" rx="4" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="534" y="526" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">NEW</text>
+      <rect x="560" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="608" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="656" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="704" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="752" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="800" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <rect x="848" y="508" width="44" height="28" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="512" y="556" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">no gaps, no repeats</text>
+
+      <!-- band eyebrows -->
+      <text x="32" y="44" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">01 &#183; OFFSET, PAGE 501</text>
+      <text x="32" y="232" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">02 &#183; KEYSET CURSOR, PAGE 501</text>
+      <text x="32" y="436" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">03 &#183; ONE ROW INSERTED BETWEEN PAGE LOADS</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="118" y="643" width="24" height="12" rx="2" fill="rgba(255,90,90,0.12)" stroke="rgba(255,90,90,0.50)" stroke-width="1"/>
+      <text x="150" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Read, then discarded</text>
+      <rect x="292" y="643" width="24" height="12" rx="2" fill="rgba(250,250,250,0.05)" stroke="#fafafa" stroke-width="1"/>
+      <text x="324" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Returned page</text>
+      <rect x="444" y="643" width="24" height="12" rx="2" fill="rgba(250,250,250,0.02)" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="476" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Never read</text>
+      <line x1="596" y1="649" x2="620" y2="649" stroke="#ff5a5a" stroke-width="1.5"/>
+      <text x="628" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Sequential walk</text>
+      <line x1="760" y1="649" x2="784" y2="649" stroke="#fafafa" stroke-width="1.5"/>
+      <text x="792" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Index seek</text>
+    </svg>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Is this schema change safe to ship?</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart &#183; Diagram Design</p>
+    <h1>Is this schema change safe to ship?</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="migration-decision-dark-title migration-decision-dark-desc">
+      <title id="migration-decision-dark-title">Is this schema change safe to ship?</title>
+      <desc id="migration-decision-dark-desc">A decision flowchart to run before writing a migration: ask first whether the change drops or renames something the running code still reads, because that path can never be one deploy and must go through expand and contract; the remaining branches route table rewrites to a NOT VALID constraint validated separately, row changes to a batched resumable backfill, and new indexes to CREATE INDEX CONCURRENTLY, leaving only purely additive changes safe to ship in a single deploy.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <text x="268" y="30" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">BEFORE YOU WRITE THE MIGRATION</text>
+
+      <!-- connectors -->
+      <line x1="268" y1="40" x2="268" y2="72" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+
+      <line x1="380" y1="104" x2="584" y2="104" stroke="#ff5a5a" stroke-width="1.5" marker-end="url(#arrow-accent-dark)"/>
+      <rect x="464" y="84" width="36" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="482" y="93" fill="#ff5a5a" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+
+      <line x1="380" y1="220" x2="584" y2="220" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="464" y="200" width="36" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="482" y="209" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+
+      <line x1="380" y1="336" x2="584" y2="336" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="464" y="316" width="36" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="482" y="325" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+
+      <line x1="380" y1="452" x2="584" y2="452" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="464" y="432" width="36" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="482" y="441" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+
+      <line x1="268" y1="136" x2="268" y2="188" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="276" y="156" width="30" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="291" y="165" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+
+      <line x1="268" y1="252" x2="268" y2="304" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="276" y="272" width="30" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="291" y="281" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+
+      <line x1="268" y1="368" x2="268" y2="420" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="276" y="388" width="30" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="291" y="397" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+
+      <line x1="268" y1="484" x2="268" y2="520" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="276" y="496" width="30" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="291" y="505" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+
+      <!-- decisions -->
+      <path d="M 156 104 L 268 72 L 380 104 L 268 136 Z" fill="#0a0a0b"/>
+      <path d="M 156 104 L 268 72 L 380 104 L 268 136 Z" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1" stroke-linejoin="round"/>
+      <text x="268" y="100" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Drops or renames</text>
+      <text x="268" y="116" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">a live column?</text>
+
+      <path d="M 156 220 L 268 188 L 380 220 L 268 252 Z" fill="#0a0a0b"/>
+      <path d="M 156 220 L 268 188 L 380 220 L 268 252 Z" fill="#0a0a0b" stroke="#fafafa" stroke-width="1" stroke-linejoin="round"/>
+      <text x="268" y="216" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Rewrites rows or</text>
+      <text x="268" y="232" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">takes a long lock?</text>
+
+      <path d="M 156 336 L 268 304 L 380 336 L 268 368 Z" fill="#0a0a0b"/>
+      <path d="M 156 336 L 268 304 L 380 336 L 268 368 Z" fill="#0a0a0b" stroke="#fafafa" stroke-width="1" stroke-linejoin="round"/>
+      <text x="268" y="332" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Backfills</text>
+      <text x="268" y="348" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">existing rows?</text>
+
+      <path d="M 156 452 L 268 420 L 380 452 L 268 484 Z" fill="#0a0a0b"/>
+      <path d="M 156 452 L 268 420 L 380 452 L 268 484 Z" fill="#0a0a0b" stroke="#fafafa" stroke-width="1" stroke-linejoin="round"/>
+      <text x="268" y="448" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Creates</text>
+      <text x="268" y="464" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">a new index?</text>
+
+      <!-- terminal actions -->
+      <rect x="584" y="68" width="320" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="584" y="68" width="320" height="72" rx="6" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="600" y="94" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Expand and contract</text>
+      <text x="600" y="114" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">add, dual-write, backfill, read new, drop</text>
+      <text x="600" y="130" fill="#ff5a5a" font-size="9" font-family="'Geist Mono', monospace">one deploy here is the outage</text>
+
+      <rect x="584" y="184" width="320" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="584" y="184" width="320" height="72" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="600" y="210" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Split the constraint</text>
+      <text x="600" y="230" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">ADD CONSTRAINT &#8230; NOT VALID</text>
+      <text x="600" y="246" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">then VALIDATE CONSTRAINT, weaker lock</text>
+
+      <rect x="584" y="300" width="320" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="584" y="300" width="320" height="72" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="600" y="326" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Backfill in batches</text>
+      <text x="600" y="346" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">bounded ranges, resumable, throttled</text>
+      <text x="600" y="362" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">never one UPDATE over the table</text>
+
+      <rect x="584" y="416" width="320" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="584" y="416" width="320" height="72" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="600" y="442" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Build it concurrently</text>
+      <text x="600" y="462" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">CREATE INDEX CONCURRENTLY</text>
+      <text x="600" y="478" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">no transaction; drop INVALID, retry</text>
+
+      <rect x="108" y="520" width="320" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="108" y="520" width="320" height="72" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="124" y="546" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Ship it in one deploy</text>
+      <text x="124" y="566" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">new nullable column or new table</text>
+      <text x="124" y="582" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace">old code stays correct</text>
+
+      <text x="676" y="560" fill="#fafafa" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">the cheapest-looking path</text>
+      <text x="676" y="578" fill="#fafafa" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">is the one that pages you</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <path d="M 140 649 L 152 643 L 164 649 L 152 655 Z" fill="#0a0a0b" stroke="#fafafa" stroke-width="1" stroke-linejoin="round"/>
+      <text x="172" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Decision</text>
+      <rect x="276" y="643" width="24" height="12" rx="2" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="308" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Terminal action</text>
+      <rect x="436" y="643" width="24" height="12" rx="2" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="468" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Outage path</text>
+      <line x1="596" y1="649" x2="620" y2="649" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <text x="628" y="653" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Branch</text>
+    </svg>
+
+  </div>
+</body>
+</html>

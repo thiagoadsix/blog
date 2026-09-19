@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The states a webhook delivery moves through</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">State machine &#183; Diagram Design</p>
+    <h1>The states a webhook delivery moves through</h1>
+    <svg viewBox="0 0 960 672" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="webhook-title webhook-desc">
+      <title id="webhook-title">The states a webhook delivery moves through</title>
+      <desc id="webhook-desc">The lifecycle of one webhook delivery under at-least-once semantics: it is queued, then delivered, and either accepted on a 2xx or counted as a failed attempt on a timeout or 5xx. A failed attempt below five is rescheduled with exponential backoff and delivered again; the fifth failure moves it to the dead letter queue, which needs a human. Because a retry can repeat a call the consumer already processed, the same event id can arrive more than once.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#ffffff"/>
+
+      <!-- transitions first -->
+      <line x1="66" y1="148" x2="128" y2="148" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="288" y1="148" x2="400" y2="148" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="560" y1="148" x2="736" y2="148" stroke="#18181b" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="480" y1="184" x2="480" y2="360" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="400" y1="396" x2="288" y2="396" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="560" y1="396" x2="736" y2="396" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M 208 360 V 280 Q 208 272 216 272 H 424 Q 432 272 432 264 V 184" fill="none" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <!-- transition labels -->
+      <rect x="73" y="128" width="48" height="12" rx="2" fill="#ffffff"/>
+      <text x="97" y="137" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">QUEUED</text>
+
+      <rect x="316" y="128" width="56" height="12" rx="2" fill="#ffffff"/>
+      <text x="344" y="137" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DEQUEUED</text>
+
+      <rect x="628" y="128" width="40" height="12" rx="2" fill="#ffffff"/>
+      <text x="648" y="137" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">2XX</text>
+
+      <rect x="492" y="266" width="92" height="12" rx="2" fill="#ffffff"/>
+      <text x="538" y="275" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">5XX OR TIMEOUT</text>
+
+      <rect x="282" y="252" width="76" height="12" rx="2" fill="#ffffff"/>
+      <text x="320" y="261" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">BACKOFF DONE</text>
+
+      <rect x="306" y="376" width="76" height="12" rx="2" fill="#ffffff"/>
+      <text x="344" y="385" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ATTEMPTS &lt; 5</text>
+
+      <rect x="610" y="376" width="76" height="12" rx="2" fill="#ffffff"/>
+      <text x="648" y="385" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ATTEMPTS = 5</text>
+
+      <!-- start -->
+      <circle cx="56" cy="148" r="6" fill="#18181b"/>
+
+      <!-- states -->
+      <rect x="128" y="112" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="128" y="112" width="160" height="72" rx="8" fill="rgba(24,24,27,0.05)" stroke="#7b7b85" stroke-width="1"/>
+      <text x="208" y="146" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Pending</text>
+      <text x="208" y="164" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">queued for delivery</text>
+
+      <rect x="400" y="112" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="400" y="112" width="160" height="72" rx="8" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <text x="480" y="146" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Delivering</text>
+      <text x="480" y="164" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">POST /hooks/:id</text>
+
+      <rect x="736" y="112" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="736" y="112" width="160" height="72" rx="8" fill="rgba(24,24,27,0.05)" stroke="#18181b" stroke-width="1"/>
+      <rect x="740" y="116" width="152" height="64" rx="6" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="0.8"/>
+      <text x="816" y="146" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Delivered</text>
+      <text x="816" y="164" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">2xx, receipt stored</text>
+
+      <rect x="128" y="360" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="128" y="360" width="160" height="72" rx="8" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="208" y="394" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Scheduled retry</text>
+      <text x="208" y="412" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">1m, 5m, 25m, 2h</text>
+
+      <rect x="400" y="360" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="400" y="360" width="160" height="72" rx="8" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <text x="480" y="394" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Failed attempt</text>
+      <text x="480" y="412" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">attempt n recorded</text>
+
+      <rect x="736" y="360" width="160" height="72" rx="8" fill="#ffffff"/>
+      <rect x="736" y="360" width="160" height="72" rx="8" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1"/>
+      <rect x="740" y="364" width="152" height="64" rx="6" fill="none" stroke="rgba(238,43,43,0.50)" stroke-width="0.8"/>
+      <text x="816" y="394" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Dead letter</text>
+      <text x="816" y="412" fill="#ee2b2b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">needs a human</text>
+
+      <!-- editorial payoff -->
+      <text x="480" y="512" fill="#ee2b2b" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">the same event id can arrive more than once,</text>
+      <text x="480" y="536" fill="#ee2b2b" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">so the consumer must make the write idempotent</text>
+
+      <!-- legend -->
+      <line x1="32" y1="636" x2="928" y2="636" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+      <text x="32" y="653" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="118" y="643" width="24" height="12" rx="3" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <text x="150" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Active state</text>
+      <rect x="252" y="643" width="24" height="12" rx="3" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="284" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Waiting on backoff</text>
+      <rect x="416" y="643" width="24" height="12" rx="3" fill="rgba(24,24,27,0.05)" stroke="#18181b" stroke-width="1"/>
+      <rect x="419" y="646" width="18" height="6" rx="2" fill="none" stroke="rgba(24,24,27,0.30)" stroke-width="0.8"/>
+      <text x="448" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Terminal state</text>
+      <rect x="560" y="643" width="24" height="12" rx="3" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1"/>
+      <rect x="563" y="646" width="18" height="6" rx="2" fill="none" stroke="rgba(238,43,43,0.50)" stroke-width="0.8"/>
+      <text x="592" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Dead letter</text>
+      <line x1="690" y1="649" x2="714" y2="649" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4"/>
+      <text x="722" y="653" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Retry after wait</text>
+    </svg>
+
+  </div>
+</body>
+</html>
