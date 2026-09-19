@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The event-driven slice, emulated locally</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture &#183; Diagram Design</p>
+    <h1>The event-driven slice, emulated locally</h1>
+    <svg viewBox="0 0 960 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="emulated-slice-dark-title emulated-slice-dark-desc">
+      <title id="emulated-slice-dark-title">The event-driven slice, emulated locally</title>
+      <desc id="emulated-slice-dark-desc">An architecture diagram showing a queue, a Lambda consumer and a DynamoDB table with a global secondary index running inside a single LocalStack container on port 4566, provisioned by Terraform through tflocal and exercised end to end by an integration test that publishes through the application and then asserts against the index.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <!-- boundary zone -->
+      <rect x="300" y="192" width="620" height="136" rx="8" fill="rgba(255,90,90,0.07)" stroke="rgba(255,90,90,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="316" y="196" width="168" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="400" y="205" fill="#ff5a5a" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">LOCALSTACK &#183; localhost:4566</text>
+
+      <!-- arrows -->
+      <line x1="220" y1="264" x2="320" y2="264" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="470" y1="264" x2="535" y2="264" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="685" y1="264" x2="750" y2="264" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="825" y1="136" x2="825" y2="224" stroke="#a1a1ab" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <line x1="140" y1="440" x2="140" y2="304" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M 220,480 H 817 Q 825,480 825,472 V 304" fill="none" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- arrow labels -->
+      <rect x="244" y="244" width="52" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="270" y="253" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PUBLISH</text>
+      <rect x="484" y="244" width="38" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="503" y="253" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">EVENT</text>
+      <rect x="699" y="244" width="38" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="718" y="253" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">WRITE</text>
+      <rect x="833" y="168" width="38" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="852" y="177" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">APPLY</text>
+      <rect x="148" y="366" width="66" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="181" y="375" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">POST /ORDERS</text>
+      <rect x="486" y="460" width="64" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="518" y="469" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">QUERY GSI</text>
+
+      <!-- nodes -->
+      <rect x="60" y="224" width="160" height="80" rx="6" fill="#0a0a0b"/>
+      <rect x="60" y="224" width="160" height="80" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <rect x="68" y="230" width="28" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="82" y="239" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">APP</text>
+      <text x="140" y="272" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Order API</text>
+      <text x="140" y="290" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">endpoint :4566</text>
+
+      <rect x="320" y="224" width="150" height="80" rx="6" fill="#0a0a0b"/>
+      <rect x="320" y="224" width="150" height="80" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <rect x="328" y="230" width="28" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="342" y="239" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SQS</text>
+      <text x="395" y="272" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">orders-events</text>
+      <text x="395" y="290" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">queue</text>
+
+      <rect x="535" y="224" width="150" height="80" rx="6" fill="#0a0a0b"/>
+      <rect x="535" y="224" width="150" height="80" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <rect x="543" y="230" width="42" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="564" y="239" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LAMBDA</text>
+      <text x="610" y="272" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">orders-projector</text>
+      <text x="610" y="290" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">consumer</text>
+
+      <rect x="750" y="224" width="150" height="80" rx="6" fill="#0a0a0b"/>
+      <rect x="750" y="224" width="150" height="80" rx="6" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <rect x="758" y="230" width="28" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="772" y="239" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DDB</text>
+      <text x="825" y="272" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">orders</text>
+      <text x="825" y="290" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">gsi_status_created_at</text>
+
+      <rect x="750" y="64" width="150" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="750" y="64" width="150" height="72" rx="6" fill="rgba(250,250,250,0.03)" stroke="rgba(250,250,250,0.30)" stroke-width="1"/>
+      <rect x="758" y="70" width="28" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="772" y="79" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IAC</text>
+      <text x="825" y="108" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Terraform</text>
+      <text x="825" y="126" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">tflocal apply</text>
+
+      <rect x="60" y="440" width="160" height="80" rx="6" fill="#0a0a0b"/>
+      <rect x="60" y="440" width="160" height="80" rx="6" fill="rgba(161,161,171,0.12)" stroke="#8b8b95" stroke-width="1"/>
+      <rect x="68" y="446" width="32" height="12" rx="2" fill="none" stroke="rgba(250,250,250,0.40)" stroke-width="0.8"/>
+      <text x="84" y="455" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TEST</text>
+      <text x="140" y="488" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Integration test</text>
+      <text x="140" y="506" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">vitest run</text>
+
+      <!-- legend -->
+      <line x1="30" y1="604" x2="930" y2="604" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="30" y="621" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <rect x="150" y="612" width="24" height="10" rx="2" fill="rgba(255,90,90,0.07)" stroke="rgba(255,90,90,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="182" y="621" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Emulated locally</text>
+      <line x1="370" y1="617" x2="392" y2="617" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <text x="402" y="621" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Runtime call</text>
+      <line x1="580" y1="617" x2="602" y2="617" stroke="#a1a1ab" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <text x="612" y="621" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Provisioning</text>
+    </svg>
+
+  </div>
+</body>
+</html>

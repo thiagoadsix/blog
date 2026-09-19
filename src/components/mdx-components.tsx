@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ComponentType } from "react";
 import * as runtime from "react/jsx-runtime";
 import { Callout } from "./callout";
+import { Diagram } from "./diagram";
 
 type MDXComponent = ComponentType<{ components: Record<string, unknown> }>;
 
@@ -21,6 +22,7 @@ function getMDXComponent(code: string): MDXComponent {
 const components = {
   Image,
   Callout,
+  Diagram,
 };
 
 interface MdxProps {

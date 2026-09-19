@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What each test layer can and cannot see</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Layer stack &#183; Diagram Design</p>
+    <h1>What each test layer can and cannot see</h1>
+    <svg viewBox="0 0 960 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="confidence-ladder-title confidence-ladder-desc">
+      <title id="confidence-ladder-title">What each test layer can and cannot see</title>
+      <desc id="confidence-ladder-desc">A four-layer stack ordered from fast and free at the bottom to slow and public at the top: unit tests prove business rules but check no AWS contract, the local emulator proves wiring, index names and key schema but is blind to IAM, quotas and index backfill, an ephemeral AWS stack proves the parts the emulator cannot at the cost of minutes and money, and production exposes whatever is left in front of users.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#ffffff"/>
+
+      <!-- direction indicator -->
+      <line x1="72" y1="372" x2="72" y2="108" stroke="#9a9aa3" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="72" y="90" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">SLOWER, COSTLIER</text>
+      <text x="72" y="394" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">FASTER, FREE</text>
+
+      <!-- stack -->
+      <rect x="120" y="100" width="780" height="272" rx="6" fill="#ffffff"/>
+      <rect x="120" y="100" width="780" height="272" rx="6" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <line x1="120" y1="168" x2="900" y2="168" stroke="rgba(24,24,27,0.12)" stroke-width="1"/>
+      <line x1="120" y1="236" x2="900" y2="236" stroke="rgba(24,24,27,0.12)" stroke-width="1"/>
+      <line x1="120" y1="304" x2="900" y2="304" stroke="rgba(24,24,27,0.12)" stroke-width="1"/>
+      <rect x="120" y="236" width="780" height="68" fill="rgba(238,43,43,0.08)" stroke="#ee2b2b" stroke-width="1"/>
+
+      <text x="140" y="138" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.14em">04</text>
+      <text x="190" y="129" fill="#18181b" font-size="14" font-weight="600" font-family="'Geist', sans-serif">Production</text>
+      <text x="190" y="147" fill="#7b7b85" font-size="10" font-family="'Geist', sans-serif">the only environment that proves everything</text>
+      <text x="884" y="138" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">failures are public</text>
+
+      <text x="140" y="206" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.14em">03</text>
+      <text x="190" y="197" fill="#18181b" font-size="14" font-weight="600" font-family="'Geist', sans-serif">Ephemeral AWS stack</text>
+      <text x="190" y="215" fill="#7b7b85" font-size="10" font-family="'Geist', sans-serif">real IAM, real quotas, real index backfill</text>
+      <text x="884" y="206" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">minutes per run, real money</text>
+
+      <text x="140" y="274" fill="#ee2b2b" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.14em">02</text>
+      <text x="190" y="265" fill="#18181b" font-size="14" font-weight="600" font-family="'Geist', sans-serif">Local emulator</text>
+      <text x="190" y="283" fill="#7b7b85" font-size="10" font-family="'Geist', sans-serif">wiring, index names, key schema, payload shape</text>
+      <text x="884" y="274" fill="#18181b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">blind to: IAM, quotas, backfill</text>
+
+      <text x="140" y="342" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.14em">01</text>
+      <text x="190" y="333" fill="#18181b" font-size="14" font-weight="600" font-family="'Geist', sans-serif">Unit tests</text>
+      <text x="190" y="351" fill="#7b7b85" font-size="10" font-family="'Geist', sans-serif">business rules against a fake, no network</text>
+      <text x="884" y="342" fill="#9a9aa3" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">blind to: every AWS contract</text>
+    </svg>
+
+  </div>
+</body>
+</html>
