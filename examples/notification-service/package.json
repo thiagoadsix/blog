@@ -1,0 +1,42 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "description": "A modular notification service implementing rate limiting for different notification types (status updates, news, and marketing)",
+  "author": {
+    "name": "Thiago Andrade Silva",
+    "email": "thiago.adsix@gmail.com",
+    "url": "https://www.thiagoadsix.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thiagoadsix/notification-service.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "start": "node dist/src/index.js",
+    "build": "rimraf dist && tsc -p tsconfig.json",
+    "test": "vitest --silent",
+    "test:cov": "vitest run --silent --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.0.5",
+    "module-alias": "^2.2.3",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.5.4",
+    "vite-tsconfig-paths": "^5.0.1",
+    "vitest": "^2.0.5"
+  },
+  "keywords": [
+    "notification",
+    "rate-limit",
+    "email",
+    "service",
+    "typescript"
+  ],
+  "_moduleAliases": {
+    "@": "dist/src"
+  }
+}
