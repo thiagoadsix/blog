@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What happens the instant a hot key expires</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Timeline &#183; Diagram Design</p>
+    <h1>What happens the instant a hot key expires</h1>
+    <svg viewBox="0 0 960 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="stampede-dark-title stampede-dark-desc">
+      <title id="stampede-dark-title">What happens the instant a hot key expires</title>
+      <desc id="stampede-dark-desc">Two lanes comparing cache behaviour at the moment a hot key expires. Without coordination, six concurrent requests all miss and each one queries the origin. With stale-while-revalidate and single flight, one request refreshes the entry in the background while the other five are served the stale copy, so the origin sees a single query.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <!-- lanes -->
+      <rect x="28" y="64" width="904" height="156" rx="8" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="44" y="58" width="216" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="152" y="67" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">TTL EXPIRES &#183; NO COORDINATION</text>
+
+      <rect x="28" y="252" width="904" height="156" rx="8" fill="rgba(250,250,250,0.02)" stroke="rgba(250,250,250,0.30)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="44" y="246" width="240" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="164" y="255" fill="#a1a1ab" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">STALE-WHILE-REVALIDATE &#183; SINGLE FLIGHT</text>
+
+      <!-- lane A: every miss reaches the origin -->
+      <text x="64" y="88" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">6 CONCURRENT REQUESTS</text>
+      <line x1="64" y1="104" x2="900" y2="104" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="140" y1="108" x2="140" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="236" y1="108" x2="236" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="332" y1="108" x2="332" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="404" y1="108" x2="404" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="516" y1="108" x2="516" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="620" y1="108" x2="620" y2="176" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="64" y="180" width="700" height="28" rx="4" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <text x="414" y="198" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ORIGIN &#183; ONE DB QUERY PER MISS</text>
+      <circle cx="140" cy="104" r="4" fill="#a1a1ab"/>
+      <circle cx="236" cy="104" r="4" fill="#a1a1ab"/>
+      <circle cx="332" cy="104" r="4" fill="#a1a1ab"/>
+      <circle cx="404" cy="104" r="4" fill="#a1a1ab"/>
+      <circle cx="516" cy="104" r="4" fill="#a1a1ab"/>
+      <circle cx="620" cy="104" r="4" fill="#a1a1ab"/>
+      <rect x="788" y="168" width="112" height="44" rx="6" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="844" y="195" fill="#ff5a5a" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">6 queries</text>
+
+      <!-- lane B: one refresh, five stale hits -->
+      <text x="64" y="276" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">6 CONCURRENT REQUESTS</text>
+      <line x1="64" y1="292" x2="900" y2="292" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <line x1="140" y1="296" x2="140" y2="364" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <rect x="152" y="318" width="72" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="188" y="327" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REVALIDATE</text>
+      <text x="560" y="327" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">5 SERVED STALE, NOTHING LEAVES THE EDGE</text>
+      <rect x="64" y="368" width="700" height="28" rx="4" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <text x="414" y="386" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ORIGIN &#183; ONE BACKGROUND REFRESH</text>
+      <circle cx="140" cy="292" r="4" fill="#a1a1ab"/>
+      <circle cx="236" cy="292" r="4" fill="#a1a1ab"/>
+      <circle cx="332" cy="292" r="4" fill="#a1a1ab"/>
+      <circle cx="404" cy="292" r="4" fill="#a1a1ab"/>
+      <circle cx="516" cy="292" r="4" fill="#a1a1ab"/>
+      <circle cx="620" cy="292" r="4" fill="#a1a1ab"/>
+      <rect x="788" y="356" width="112" height="44" rx="6" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="844" y="383" fill="#ff5a5a" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">1 query</text>
+
+      <!-- legend -->
+      <line x1="28" y1="436" x2="932" y2="436" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="28" y="453" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <circle cx="162" cy="449" r="4" fill="#a1a1ab"/>
+      <text x="178" y="453" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Incoming request</text>
+      <line x1="340" y1="443" x2="340" y2="455" stroke="#a1a1ab" stroke-width="1.2"/>
+      <text x="352" y="453" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Reaches the origin</text>
+      <rect x="520" y="443" width="24" height="12" rx="2" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <text x="552" y="453" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Origin work</text>
+      <rect x="700" y="443" width="24" height="12" rx="2" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="732" y="453" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Cost of the expiry</text>
+    </svg>
+
+  </div>
+</body>
+</html>

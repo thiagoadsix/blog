@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>If-Match turns a lost update into a 412</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #ffffff;
+    --color-ink: #18181b;
+    --color-muted: #7b7b85;
+    --color-accent: #ee2b2b;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Sequence &#183; Diagram Design</p>
+    <h1>If-Match turns a lost update into a 412</h1>
+    <svg viewBox="0 0 960 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="if-match-title if-match-desc">
+      <title id="if-match-title">If-Match turns a lost update into a 412</title>
+      <desc id="if-match-desc">A sequence diagram of two editors loading the same order at version seven. The first write carries If-Match with that version and succeeds, moving the resource to version eight. The second write still carries version seven, so the API answers 412 Precondition Failed instead of silently overwriting the first edit.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7b7b85"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ee2b2b"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2f6fd0"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#ffffff"/>
+
+      <!-- conflict zone -->
+      <rect x="456" y="316" width="472" height="104" rx="8" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="472" y="310" width="212" height="12" rx="2" fill="#ffffff"/>
+      <text x="578" y="319" fill="#7b7b85" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">SECOND WRITE &#183; STALE BASE VERSION</text>
+
+      <!-- lifelines -->
+      <line x1="120" y1="84" x2="120" y2="430" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="480" y1="84" x2="480" y2="430" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="840" y1="84" x2="840" y2="430" stroke="#e3e3e8" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!-- messages -->
+      <line x1="120" y1="128" x2="480" y2="128" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="164" x2="120" y2="164" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <line x1="840" y1="200" x2="480" y2="200" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="236" x2="840" y2="236" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <line x1="120" y1="272" x2="480" y2="272" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="308" x2="120" y2="308" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <line x1="840" y1="352" x2="480" y2="352" stroke="#7b7b85" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="480" y1="388" x2="840" y2="388" stroke="#ee2b2b" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+
+      <!-- message labels -->
+      <rect x="264" y="108" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="300" y="117" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GET /ORDERS</text>
+      <rect x="264" y="144" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="300" y="153" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">200 ETAG V7</text>
+
+      <rect x="624" y="180" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="660" y="189" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GET /ORDERS</text>
+      <rect x="624" y="216" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="660" y="225" fill="#9a9aa3" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">200 ETAG V7</text>
+
+      <rect x="264" y="252" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="300" y="261" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PUT IF-MATCH</text>
+      <rect x="264" y="288" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="300" y="297" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">200 ETAG V8</text>
+
+      <rect x="620" y="332" width="80" height="12" rx="2" fill="#ffffff"/>
+      <text x="660" y="341" fill="#18181b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">STILL SENDS V7</text>
+      <rect x="624" y="368" width="72" height="12" rx="2" fill="#ffffff"/>
+      <text x="660" y="377" fill="#ee2b2b" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">412 PRECOND</text>
+
+      <!-- actors -->
+      <rect x="32" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="32" y="36" width="176" height="48" rx="6" fill="rgba(123,123,133,0.10)" stroke="#9a9aa3" stroke-width="1"/>
+      <text x="120" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Editor A</text>
+      <text x="120" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">saves first</text>
+
+      <rect x="392" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="392" y="36" width="176" height="48" rx="6" fill="#ffffff" stroke="#18181b" stroke-width="1"/>
+      <text x="480" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Orders API</text>
+      <text x="480" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">compares ETag</text>
+
+      <rect x="752" y="36" width="176" height="48" rx="6" fill="#ffffff"/>
+      <rect x="752" y="36" width="176" height="48" rx="6" fill="rgba(123,123,133,0.10)" stroke="#9a9aa3" stroke-width="1"/>
+      <text x="840" y="58" fill="#18181b" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Editor B</text>
+      <text x="840" y="74" fill="#7b7b85" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">loaded the same row</text>
+
+      <!-- editorial payoff -->
+      <text x="480" y="454" fill="#ee2b2b" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">B is told the ground moved, instead of quietly erasing A</text>
+
+      <!-- legend -->
+      <line x1="32" y1="484" x2="928" y2="484" stroke="rgba(24,24,27,0.12)" stroke-width="0.8"/>
+      <text x="32" y="501" fill="#7b7b85" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="150" y1="497" x2="174" y2="497" stroke="#7b7b85" stroke-width="1.2"/>
+      <text x="182" y="501" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Request</text>
+      <line x1="300" y1="497" x2="324" y2="497" stroke="#7b7b85" stroke-width="1.2" stroke-dasharray="5,4"/>
+      <text x="332" y="501" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Response</text>
+      <rect x="470" y="491" width="24" height="12" rx="2" fill="rgba(24,24,27,0.02)" stroke="rgba(24,24,27,0.30)" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="502" y="501" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Conflicting write</text>
+      <line x1="680" y1="497" x2="704" y2="497" stroke="#ee2b2b" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="712" y="501" fill="#7b7b85" font-size="9" font-family="'Geist', sans-serif">Rejected, nothing lost</text>
+    </svg>
+
+  </div>
+</body>
+</html>

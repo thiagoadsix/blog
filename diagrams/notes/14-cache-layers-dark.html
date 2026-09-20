@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where a response is allowed to rest</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-paper: #0a0a0b;
+    --color-ink: #fafafa;
+    --color-muted: #a1a1ab;
+    --color-accent: #ff5a5a;
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem;
+  }
+  .frame { max-width: 1200px; width: 100%; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+    font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--color-ink); margin-bottom: 1.5rem;
+  }
+  svg { width: 100%; min-width: 900px; display: block; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Data flow &#183; Diagram Design</p>
+    <h1>Where a response is allowed to rest</h1>
+    <svg viewBox="0 0 960 328" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cache-layers-dark-title cache-layers-dark-desc">
+      <title id="cache-layers-dark-title">Where a response is allowed to rest</title>
+      <desc id="cache-layers-dark-desc">A request path from client through the browser cache and a shared CDN cache to the origin, showing which Cache-Control directive governs each hop: max-age and private bind the browser, s-maxage and Vary bind the shared cache, and the origin emits the ETag validator that turns a miss into a 304.</desc>
+      <defs>
+        <marker id="arrow-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a1a1ab"/></marker>
+        <marker id="arrow-accent-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ff5a5a"/></marker>
+        <marker id="arrow-link-dark" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#7aa7ec"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0a0a0b"/>
+
+      <!-- forward path -->
+      <line x1="188" y1="72" x2="276" y2="72" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="436" y1="72" x2="524" y2="72" stroke="#a1a1ab" stroke-width="1.2" marker-end="url(#arrow-dark)"/>
+      <line x1="684" y1="72" x2="772" y2="72" stroke="#7aa7ec" stroke-width="1.2" marker-end="url(#arrow-link-dark)"/>
+
+      <!-- return path -->
+      <line x1="276" y1="96" x2="188" y2="96" stroke="#a1a1ab" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-dark)"/>
+      <line x1="524" y1="96" x2="436" y2="96" stroke="#a1a1ab" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-dark)"/>
+      <line x1="772" y1="96" x2="684" y2="96" stroke="#7aa7ec" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-link-dark)"/>
+
+      <!-- forward labels -->
+      <rect x="196" y="52" width="72" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="232" y="61" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GET /ORDERS</text>
+      <rect x="446" y="52" width="68" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="480" y="61" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">STALE COPY</text>
+      <rect x="690" y="52" width="76" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="728" y="61" fill="#7aa7ec" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">IF-NONE-MATCH</text>
+
+      <!-- return labels -->
+      <rect x="196" y="104" width="72" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="232" y="113" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">200 ETAG V7</text>
+      <rect x="442" y="104" width="76" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="480" y="113" fill="#8b8b95" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">200 REFRESHED</text>
+      <rect x="692" y="104" width="72" height="12" rx="2" fill="#0a0a0b"/>
+      <text x="728" y="113" fill="#7aa7ec" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">304 NO BODY</text>
+
+      <!-- nodes -->
+      <rect x="28" y="48" width="160" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="28" y="48" width="160" height="72" rx="6" fill="rgba(161,161,171,0.12)" stroke="#8b8b95" stroke-width="1"/>
+      <text x="108" y="82" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Client</text>
+      <text x="108" y="100" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">one user</text>
+
+      <rect x="276" y="48" width="160" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="276" y="48" width="160" height="72" rx="6" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <text x="356" y="82" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Browser cache</text>
+      <text x="356" y="100" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">private, per user</text>
+
+      <rect x="524" y="48" width="160" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="524" y="48" width="160" height="72" rx="6" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="604" y="82" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">CDN / shared cache</text>
+      <text x="604" y="100" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">one copy, many users</text>
+
+      <rect x="772" y="48" width="160" height="72" rx="6" fill="#0a0a0b"/>
+      <rect x="772" y="48" width="160" height="72" rx="6" fill="#0a0a0b" stroke="#fafafa" stroke-width="1"/>
+      <text x="852" y="82" fill="#fafafa" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Origin</text>
+      <text x="852" y="100" fill="#a1a1ab" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">emits the validator</text>
+
+      <!-- directive chips -->
+      <text x="28" y="152" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">WHAT THE ORIGIN SENDS, AND WHO OBEYS IT</text>
+
+      <rect x="276" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="314" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">max-age</text>
+      <rect x="360" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="398" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">private</text>
+
+      <rect x="524" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="562" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">s-maxage</text>
+      <rect x="608" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="646" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Vary</text>
+
+      <rect x="772" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="810" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ETag</text>
+      <rect x="856" y="164" width="76" height="24" rx="4" fill="#0a0a0b" stroke="rgba(227,227,232,0.22)" stroke-width="1"/>
+      <text x="894" y="179" fill="#fafafa" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">no-store</text>
+
+      <!-- editorial aside -->
+      <text x="604" y="224" fill="#ff5a5a" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">the shared cache is the only one</text>
+      <text x="604" y="242" fill="#ff5a5a" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">that can hand your data to a stranger</text>
+
+      <!-- legend -->
+      <line x1="28" y1="284" x2="932" y2="284" stroke="rgba(250,250,250,0.12)" stroke-width="0.8"/>
+      <text x="28" y="301" fill="#a1a1ab" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="150" y1="297" x2="174" y2="297" stroke="#a1a1ab" stroke-width="1.2"/>
+      <text x="182" y="301" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Request</text>
+      <line x1="300" y1="297" x2="324" y2="297" stroke="#a1a1ab" stroke-width="1.2" stroke-dasharray="5,4"/>
+      <text x="332" y="301" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Response</text>
+      <line x1="460" y1="297" x2="484" y2="297" stroke="#7aa7ec" stroke-width="1.2"/>
+      <text x="492" y="301" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Revalidation</text>
+      <rect x="640" y="291" width="24" height="12" rx="2" fill="rgba(250,250,250,0.05)" stroke="#a1a1ab" stroke-width="1"/>
+      <text x="672" y="301" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Stores a copy</text>
+      <rect x="800" y="291" width="24" height="12" rx="2" fill="rgba(255,90,90,0.12)" stroke="#ff5a5a" stroke-width="1"/>
+      <text x="832" y="301" fill="#a1a1ab" font-size="9" font-family="'Geist', sans-serif">Shared by all</text>
+    </svg>
+
+  </div>
+</body>
+</html>
