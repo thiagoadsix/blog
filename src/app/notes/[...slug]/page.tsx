@@ -82,8 +82,8 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
   return (
     <main className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-(--breakpoint-xl) p-4">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
+      <div className="mx-auto w-full max-w-(--breakpoint-lg) p-4">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-10">
           <article className="prose dark:prose-invert min-w-0 max-w-none">
             <div className="not-prose mb-8 space-y-4">
               <Link
