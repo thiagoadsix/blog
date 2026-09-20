@@ -243,6 +243,109 @@ costs you serialization failures (`40001`) that the application must catch and r
 that retry loop is the reason teams avoid it. If you propose `SERIALIZABLE`, propose the
 retry loop in the same sentence.
 
+<Details summary="Each anomaly as two concurrent sessions">
+
+The whole matrix falls out of one difference: `READ COMMITTED` takes a fresh snapshot **per
+statement**, `REPEATABLE READ` takes one snapshot **per transaction**.
+
+**Dirty read** is impossible at every level because MVCC keeps uncommitted row versions
+invisible. PostgreSQL accepts `READ UNCOMMITTED` and silently runs it as `READ COMMITTED`.
+
+**Non-repeatable read** — same row, different value:
+
+```sql
+-- T1 (READ COMMITTED)                   -- T2
+BEGIN;
+SELECT balance FROM accounts
+  WHERE id = 1;  -- 100
+                                         UPDATE accounts SET balance = 50
+                                           WHERE id = 1;
+                                         COMMIT;
+SELECT balance FROM accounts
+  WHERE id = 1;  -- 50
+```
+
+The damage is not the second `SELECT`. It is the `if` between them: you authorised something
+against a balance that stopped existing.
+
+**Phantom read** — same `WHERE`, different set:
+
+```sql
+-- T1 (READ COMMITTED)                   -- T2
+BEGIN;
+SELECT count(*) FROM orders
+  WHERE status = 'pending';  -- 3
+                                         INSERT INTO orders (status)
+                                           VALUES ('pending');
+                                         COMMIT;
+SELECT * FROM orders
+  WHERE status = 'pending';  -- 4 rows
+```
+
+Nothing you already read changed. A fourth row was born inside your filter, so an aggregate
+and the list it summarises stop agreeing.
+
+**Lost update** is only possible when the arithmetic happens in your process:
+
+```sql
+-- lost: two sessions both read 5, both write 6
+SELECT value FROM counters WHERE id = 1;
+UPDATE counters SET value = 6 WHERE id = 1;
+
+-- safe at every level: the row lock makes the second session re-evaluate
+UPDATE counters SET value = value + 1 WHERE id = 1;
+```
+
+One caveat the matrix hides: at `REPEATABLE READ` that first form is *prevented* by aborting
+with `40001`, not by making it work. `PREVENTED` means "refused loudly" everywhere except
+the dirty read column.
+
+</Details>
+
+<Details summary="Where the isolation level is actually set">
+
+Not in a migration, and not on the query. Every standalone statement is its own
+single-statement transaction — there is no *in between* for another session to slip into, so
+the level is irrelevant until you open a transaction explicitly. That is why an ORM can hide
+the concept for years.
+
+```sql
+BEGIN ISOLATION LEVEL SERIALIZABLE;
+  SELECT count(*) FROM prices WHERE option_id = 7 AND active;
+  -- ...
+COMMIT;
+```
+
+The same setting exists at three wider scopes — `postgresql.conf`, `ALTER DATABASE ... SET
+default_transaction_isolation`, and `SET SESSION CHARACTERISTICS` — but session scope is a
+trap behind a transaction-mode pooler, where the next statement may land on another
+connection. Keep it on the transaction.
+
+In an ORM it is an option on the transaction, not on the query. In Prisma:
+
+```ts
+await prisma.$transaction(
+  async (tx) => {
+    const active = await tx.price.count({ where: { optionId: 7, active: true } })
+    if (active !== 1) throw new Error("unexpected state")
+    await tx.price.updateMany({
+      where: { optionId: 7, active: true },
+      data: { active: false },
+    })
+    await tx.price.create({ data: { optionId: 7, amountCents: 4000, active: true } })
+  },
+  { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+)
+```
+
+PostgreSQL's `40001` surfaces as `P2034`, and the callback runs again from the top on retry —
+so nothing inside it may charge a card or send mail.
+
+The tell in application code: a `count`, `findFirst` or aggregate, an `if`, and then a write
+to a **different** row. That shape is write skew waiting for a second writer.
+
+</Details>
+
 ### Write skew, concretely
 
 <Diagram
@@ -451,33 +554,53 @@ id, exactly as in the [webhook section](/notes/api-design).
 
 ## Practice
 
-**Q: A table has `order_id`, `product_id`, `quantity`, `product_name`, `product_price`. What is wrong, and what is not?**
+<QA>
+
+A table has `order_id`, `product_id`, `quantity`, `product_name`, `product_price`. What is wrong, and what is not?
 
 `product_name` violates 2NF — it depends on `product_id` alone, not the composite key. It
 should be joined from `products`. `product_price` looks identical but is not: the price *as
 charged* is a historical fact that must not change when the catalogue changes. One is a
 normalization bug, the other is correct denormalization.
 
-**Q: You must guarantee one primary address per user. How?**
+</QA>
+
+<QA>
+
+You must guarantee one primary address per user. How?
 
 `CREATE UNIQUE INDEX ON addresses (user_id) WHERE is_primary;`. An application check
 loses to two concurrent requests; the partial index does not.
 
-**Q: Two transactions each read a count of 1, each insert a row, both commit, and now the count is 3. Which anomaly, and which levels allow it?**
+</QA>
+
+<QA>
+
+Two transactions each read a count of 1, each insert a row, both commit, and now the count is 3. Which anomaly, and which levels allow it?
 
 Write skew. Allowed under `READ COMMITTED` and `REPEATABLE READ`; prevented by
 `SERIALIZABLE`, by locking a common row, or by a constraint that makes the second insert
 fail.
 
-**Q: Why does a v4 UUID primary key slow down inserts on a large table?**
+</QA>
+
+<QA>
+
+Why does a v4 UUID primary key slow down inserts on a large table?
 
 Random values scatter inserts across the whole B-tree instead of appending to the rightmost
 page. Cache hit rate drops, page splits increase, and the index grows faster.
 
-**Q: When is `jsonb` the right answer?**
+</QA>
+
+<QA>
+
+When is `jsonb` the right answer?
 
 When the shape is genuinely open-ended or tenant-defined and you are not filtering on it in
 a hot path. Once you index and filter one key constantly, it deserves a column.
+
+</QA>
 
 ## Recall checklist
 

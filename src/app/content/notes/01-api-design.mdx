@@ -69,17 +69,25 @@ caller cannot see confirms that it exists. For tenant-scoped resources, `404` le
 
 ### Practice
 
-**Q: A client sends `POST /orders`, times out, and retries. You now have two orders. Whose fault is it?**
+<QA>
+
+A client sends `POST /orders`, times out, and retries. You now have two orders. Whose fault is it?
 
 Nobody's, and that is the point. `POST` is not idempotent, so the client was within its
 rights to retry, and the server was within its rights to create a second order. The
 protocol does not solve this — you have to, with an idempotency key.
 
-**Q: Why is `PUT /users/7` idempotent but `POST /users` not?**
+</QA>
+
+<QA>
+
+Why is `PUT /users/7` idempotent but `POST /users` not?
 
 `PUT` names the resource, so the second call overwrites the same address. `POST` asks the
 server to create something and assign an identity, so the second call creates a second
 thing.
+
+</QA>
 
 ## Idempotency keys
 
@@ -139,17 +147,78 @@ cost.
   guarantees the operation runs once."
 </Callout>
 
+### What the key is scoped to
+
+The key identifies one logical attempt. Not one click, and not one session. That
+distinction is where most implementations leak.
+
+A key generated inside the click handler produces a new key on every click, which is the
+same as having no key at all. It has to be created once, when the operation becomes
+possible, and held for as long as that operation can still be retried.
+
+```tsx
+function CheckoutForm({ cart }) {
+  const idempotencyKey = useRef(crypto.randomUUID()).current;
+
+  async function pay() {
+    await fetch("/payments", {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ amount_cents: cart.total, order_id: cart.orderId }),
+    });
+  }
+}
+```
+
+Held that way, a double click sends two requests carrying the same key, and the server
+resolves them with the three steps above: the second one either gets `409` because the
+first is still in flight, or replays the stored response. Disabling the button is still
+worth doing, but it is a UX improvement, not the correctness boundary — two tabs, a flaky
+connection and a backgrounded mobile browser all get past it.
+
+The gap is the reload. A key held in component state dies with the component, so a refresh
+produces a new key and the server sees a genuinely new payment. Moving it into
+`sessionStorage` keyed by the order closes the refresh case, and still loses on a different
+device or cleared storage.
+
+The structural fix is to stop relying on client-side randomness and anchor the operation to
+a resource the server created:
+
+1. `POST /payment-intents` with `{"order_id": 812}` — deduplicated by a unique constraint
+   on `order_id`, returns `pi_abc`.
+2. `POST /payment-intents/pi_abc/confirm` — the URL now names the resource, so the
+   operation is idempotent by construction and needs no header at all.
+
+Client-generated keys protect against network retries. Server-issued identifiers protect
+against client amnesia — a refresh, a crash, a different device. Payment providers ship
+both layers, and for the same reason.
+
+<Callout type="warning">
+  An idempotency key answers "is this the same request, retried?" It never answers "did the
+  user mean to do this twice?" A second, deliberate purchase tomorrow is a new intent and
+  should go through. Guarding against that belongs to the order state machine
+  (`status != 'paid'`), not to the key.
+</Callout>
+
 ### Practice
 
-**Q: Why not just check "does a payment already exist for this order?" instead?**
+<QA>
+
+Why not just check "does a payment already exist for this order?" instead?
 
 Two concurrent requests both run the check, both see nothing, both insert. A read-then-write
 check is not atomic. The unique constraint is.
 
-**Q: Where should the key be generated?**
+</QA>
+
+<QA>
+
+Where should the key be generated?
 
 The client, before the first attempt, and reused across all retries of that attempt. If
 the server generates it, a retry gets a new key and the whole mechanism does nothing.
+
+</QA>
 
 ## Pagination
 
@@ -210,15 +279,23 @@ trade-off rather than declaring cursors universally correct.
 
 ### Practice
 
-**Q: Your list endpoint is fast in staging and slow in production. Same query. Why?**
+<QA>
+
+Your list endpoint is fast in staging and slow in production. Same query. Why?
 
 Staging has a thousand rows; production has ten million. `OFFSET` cost scales with the
 offset, and staging never reaches a deep page.
 
-**Q: A user reports seeing the same order on page 2 and page 3. What happened?**
+</QA>
+
+<QA>
+
+A user reports seeing the same order on page 2 and page 3. What happened?
 
 New rows were inserted above the window between requests, shifting everything down by one.
 Offset pagination over a table with concurrent inserts, sorted by a non-stable key.
+
+</QA>
 
 ## Versioning and backward compatibility
 
@@ -262,12 +339,16 @@ Link: <https://api.acme.com/docs/v2-migration>; rel="deprecation"
 
 ### Practice
 
-**Q: You need to rename `user_name` to `username`. How, without breaking anyone?**
+<QA>
+
+You need to rename `user_name` to `username`. How, without breaking anyone?
 
 Add `username` alongside `user_name` and populate both. Accept either on writes, preferring
 the new one. Mark the old field deprecated in the docs and in a response header. Watch
 usage. Remove it when it reaches zero — which is the same expand/contract shape as a
 database migration.
+
+</QA>
 
 ## Error contracts
 
@@ -353,24 +434,319 @@ thousands of users behind one address.
 
 ## Caching and optimistic concurrency
 
-The same mechanism solves two problems.
+One header does two jobs that look unrelated: not sending a body the client already has,
+and not overwriting an edit the client never saw.
 
 ```http
 GET /orders/812
 → 200 OK
-  ETag: "a1b2c3"
+  ETag: "order-812-v7"
+  Cache-Control: private, no-cache
 ```
 
-**Caching** — the client sends `If-None-Match: "a1b2c3"` and you answer `304 Not Modified`
-with no body when it still matches.
+**Caching** — the client sends `If-None-Match: "order-812-v7"` and you answer `304 Not
+Modified` with no body when it still matches.
 
-**Lost update prevention** — the client sends `If-Match: "a1b2c3"` on a write. If the
+**Lost update prevention** — the client sends `If-Match: "order-812-v7"` on a write. If the
 resource changed since, you answer `412 Precondition Failed` instead of silently
 overwriting someone else's edit. This is optimistic concurrency control, and it is the HTTP
 expression of the same idea as a `version` column.
 
 Without it, two people editing the same record produce last-write-wins, and the first
 person's change vanishes with no error anywhere.
+
+### Who is allowed to keep a copy
+
+`Cache-Control` is not one setting. It is a set of instructions addressed to different
+audiences, and the audiences have different privacy properties — the browser cache holds
+one user's data, a CDN holds one copy for everyone.
+
+<Diagram
+  src="/diagrams/14-cache-layers"
+  alt="Request path from client through browser cache and CDN to origin, with the Cache-Control directives that govern each hop."
+  width={1920}
+  height={656}
+  caption="max-age and private bind the browser. s-maxage and Vary bind the shared cache. Only the origin can issue the validator that turns the next miss into a 304."
+/>
+
+| Directive | Who obeys it | What it means |
+| --- | --- | --- |
+| `max-age=60` | Every cache | Fresh for 60s, no revalidation during that window |
+| `s-maxage=60` | Shared caches only | Overrides `max-age` at the CDN, ignored by the browser |
+| `private` | Shared caches | "You may not store this at all" |
+| `no-store` | Every cache | Nothing is written anywhere, including disk |
+| `no-cache` | Every cache | Store it, but revalidate before **every** reuse |
+| `must-revalidate` | Every cache | Once stale, never serve without checking |
+| `stale-while-revalidate=300` | Every cache | Serve the stale copy for 300s while refreshing behind it |
+| `immutable` | Every cache | Never revalidate while fresh — fingerprinted assets only |
+
+`no-cache` and `no-store` sound like synonyms and do opposite things. `no-cache` still
+stores the response and only forbids using it without asking. `no-store` forbids writing it
+down at all. If you mean "never persist this", `no-store` is the one.
+
+<Details summary="Example 1 — the one word that serves one user's data to another">
+
+The leak is not exotic. It is a per-user response with a public caching directive, sitting
+behind a CDN.
+
+```ts
+export async function GET(req: Request) {
+  const user = await authenticate(req);
+  const inbox = await getInbox(user.id);
+
+  return Response.json(inbox, {
+    headers: { "Cache-Control": "public, max-age=60" },
+  });
+}
+```
+
+The CDN's cache key is the URL — `/inbox` — and the URL contains no user. The first
+authenticated request populates the entry; for the next 60 seconds every other caller of
+`/inbox` is served that person's mail, authentication never reaching your handler at all.
+
+Two different mechanisms fix it, and they fix different things:
+
+```ts
+return Response.json(inbox, {
+  headers: {
+    "Cache-Control": "private, no-store",
+    Vary: "Authorization",
+  },
+});
+```
+
+`private` (or `no-store`) tells shared caches to stay out. `Vary: Authorization` makes the
+credential part of the cache key, so a stored entry can only ever be served back to the
+same token.
+
+`Vary` is blunt. One entry per token means a hit rate near zero, which is the correct
+outcome for per-user data but a waste for anything else — so use `private` to express
+"this belongs to one person" and keep `Vary` for genuine negotiation: `Accept-Encoding`,
+`Accept-Language`, `Accept`.
+
+<Callout type="danger">
+  Any response whose body depends on who asked must carry `private` or `no-store`. A
+  response that is public but negotiated must list every negotiated header in `Vary`. A
+  response that is public and identical for everyone is the only one that gets `public,
+  s-maxage=…`.
+</Callout>
+
+</Details>
+
+### Conditional GET, and what it actually saves
+
+```ts
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const order = await db.order.findUnique({
+    where: { id: params.id },
+    select: { id: true, version: true, status: true, totalCents: true },
+  });
+  if (!order) return new Response(null, { status: 404 });
+
+  const etag = `"order-${order.id}-v${order.version}"`;
+  const headers = { ETag: etag, "Cache-Control": "private, no-cache" };
+
+  if (req.headers.get("if-none-match") === etag) {
+    return new Response(null, { status: 304, headers });
+  }
+
+  return Response.json(order, { headers });
+}
+```
+
+A `304` always saves bandwidth. It saves **work** only when the validator is cheaper than
+the response it replaces. Hashing the serialized body means running every query, building
+the whole payload, and then throwing it away — the client's bill goes down, yours does not.
+Deriving the tag from a `version` column means one narrow read decides the outcome.
+
+<Details summary="Example 2 — choosing what the ETag is derived from">
+
+**A monotonic `version` column** is the best default. It changes on every write, it is
+cheap to select, and it doubles as the token for `If-Match` on the write path.
+
+**`updated_at`** works until two writes land inside the same timestamp tick, and it drags
+in clock questions the moment more than one machine writes. If you use it, store it at
+microsecond precision and never derive it from application time.
+
+**A hash of the response body** is always correct and always expensive. It is the right
+choice for a computed representation with no version of its own — a rendered PDF, an
+aggregated report — and the wrong choice for a row you already version.
+
+**A collection** is the hard case. `MAX(updated_at)` alone is wrong: delete one row and
+insert another within the same tick and the tag is unchanged while the page is not. Pair it
+with a count, or version the collection itself:
+
+```sql
+SELECT count(*) AS n, coalesce(max(updated_at), 'epoch') AS m
+FROM orders WHERE customer_id = $1;
+-- ETag: "orders-c412-n42-m1719"
+```
+
+That still misses an update-in-place that does not touch `updated_at`, which is the real
+argument for a trigger or a version counter owned by the table rather than assembled at
+read time.
+
+</Details>
+
+### If-Match: the same header on the write path
+
+<Diagram
+  src="/diagrams/15-if-match"
+  alt="Sequence diagram of two editors loading version seven of an order; the first write succeeds and the second is rejected with 412 Precondition Failed."
+  width={1920}
+  height={1056}
+  caption="Both editors read v7. A's write moves it to v8. B's write still claims v7, so the server rejects it instead of erasing A's edit."
+/>
+
+The check and the write have to be one statement. A `SELECT` to compare the version
+followed by an `UPDATE` is the same read-then-write race that idempotency keys have to
+avoid, just with a different prize:
+
+```ts
+const expected = req.headers.get("if-match");
+if (!expected) return new Response(null, { status: 428 });
+
+const version = Number(expected.match(/v(\d+)"$/)?.[1]);
+
+const { count } = await db.order.updateMany({
+  where: { id, version },
+  data: { status: body.status, version: { increment: 1 } },
+});
+
+if (count === 0) {
+  const current = await db.order.findUnique({ where: { id }, select: { version: true } });
+  return Response.json(
+    { type: "/errors/stale-version", title: "The order changed since you loaded it" },
+    { status: current ? 412 : 404, headers: current ? { ETag: `"order-${id}-v${current.version}"` } : {} },
+  );
+}
+```
+
+`updateMany` is not a bulk call here — it is how you get a predicate beyond the primary key
+plus a row count back. The count *is* the answer: one means you held the current version,
+zero means someone moved it.
+
+<Details summary="Example 3 — 412, 409, 428, and what the client does with each">
+
+`412 Precondition Failed` — the client sent a validator and it is stale. It knows which
+version it had, so it can fetch the new one and show a diff.
+
+`409 Conflict` — the request conflicts with current state for a reason that is not a
+validator: cancelling a shipped order, reusing a taken slug. There is nothing to refetch
+and compare; the client has to change the request.
+
+`428 Precondition Required` — the client sent no validator at all on an endpoint where
+overwriting blind is not allowed. This is what turns optimistic concurrency from a
+convention into an enforced rule; without it a client that simply omits `If-Match` gets
+last-write-wins back.
+
+What the client must **not** do is retry automatically with the new ETag. That is a
+last-write-wins overwrite with extra steps. The correct handling is to refetch, show the
+two versions, and resubmit only what the person re-confirms:
+
+```ts
+const res = await save(draft, etag);
+
+if (res.status === 412) {
+  const fresh = await refetch();            // has the new ETag
+  const conflicts = diff(base, draft, fresh);
+  if (conflicts.length === 0) return save(merge(draft, fresh), fresh.etag);
+  return showConflictUI(conflicts);         // a human decides
+}
+```
+
+Fields that were not touched by either side merge cleanly. Fields both sides changed are a
+question, not a bug — and asking it is the entire point of having rejected the write.
+
+</Details>
+
+### When the key expires, everyone arrives at once
+
+A hot entry expiring is not a cache miss. It is N concurrent cache misses, and they all
+reach the origin before the first one finishes writing the new value back.
+
+<Diagram
+  src="/diagrams/16-stampede"
+  alt="Two lanes comparing six concurrent requests at the moment a cache key expires: without coordination all six query the origin, with stale-while-revalidate and single flight only one does."
+  width={1920}
+  height={960}
+  caption="The expiry itself is the load spike. Serving the stale copy while one request refreshes turns six origin queries into one."
+/>
+
+At the edge, two numbers instead of one:
+
+```http
+Cache-Control: public, s-maxage=60, stale-while-revalidate=300
+```
+
+Fresh for 60 seconds. For the next 300, a stale copy is served immediately while a single
+background request refreshes it. Nobody waits on the origin, and the origin sees one
+request per refresh rather than one per reader.
+
+In-process, the same idea is a map of in-flight promises:
+
+```ts
+const inFlight = new Map<string, Promise<unknown>>();
+
+function singleFlight<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const existing = inFlight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const promise = load().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+}
+```
+
+<Details summary="Example 4 — the stampede you only get after a deploy">
+
+Single flight is per process. Ten replicas means ten concurrent origin queries, not one —
+enough for a read replica, not enough for a query that takes two seconds. Coordinating
+across replicas needs a shared lock:
+
+```ts
+const lock = await redis.set(`lock:${key}`, id, { NX: true, PX: 5000 });
+if (!lock) return serveStale(key) ?? waitForRefresh(key);
+```
+
+The second failure mode is synchronised expiry. Keys written together expire together — a
+warm-up loop, a cache primed by a deploy, a nightly job — so the whole set falls due in the
+same second and the stampede returns at a thousand times the width. Fix it where the TTL is
+chosen, not where the miss is handled:
+
+```ts
+const ttl = base * (0.9 + Math.random() * 0.2);   // ±10% jitter
+```
+
+Both defences answer different questions. Jitter stops a crowd from forming. Single flight
+handles the crowd that forms anyway, because some keys are hot enough that a thousand
+readers arrive inside the same millisecond no matter how the TTLs are spread.
+
+</Details>
+
+<Details summary="Four ways an ETag quietly stops working">
+
+**A proxy recompresses the body.** Your handler emits a strong `ETag` over the identity
+representation; something downstream gzips it. Strong tags promise byte equality, so the
+correct tag for a representation that survives transformation is weak — `W/"order-812-v7"`
+— which asserts semantic equivalence only. `Range` requests need a strong tag; everything
+else is usually fine weak.
+
+**Serialization is not deterministic.** Hashing `JSON.stringify(row)` is stable only if key
+order, float formatting and timestamp rendering are stable. A map iteration order that
+varies per process turns every request into a miss, and the symptom is a cache that looks
+enabled and never hits.
+
+**Replicas disagree.** Any per-instance input to the tag — a process-boot salt, a hostname,
+an in-memory counter — means two replicas answer the same URL with two different validators
+and revalidation never matches. Derive it from data, never from the machine.
+
+**The tag never changes.** A `version` column incremented by application code is skipped by
+every migration, backfill and `psql` session that writes directly. Clients then hold a
+stale body indefinitely with no error anywhere. If the tag comes from a column, a trigger
+or the database's own row version is what makes it true.
+
+</Details>
 
 ## Long-running work
 
@@ -494,6 +870,9 @@ Cover the right column and see if you can produce it.
 - [ ] Why `PATCH` usually is not idempotent
 - [ ] The three steps of idempotency-key handling, and why the unique constraint does the work
 - [ ] What happens when the same key arrives with a different body
+- [ ] Why the key is scoped to an attempt rather than to a click or a session
+- [ ] What a page reload does to a client-generated key, and how a server-issued
+      identifier closes that gap
 - [ ] Why `OFFSET 10000` is slow, in terms of what the database physically does
 - [ ] Why a keyset cursor needs a unique sort key
 - [ ] Three changes that are additive and three that are breaking
@@ -502,6 +881,12 @@ Cover the right column and see if you can produce it.
 - [ ] The revocation trade-off between JWTs and opaque tokens
 - [ ] Token bucket versus fixed window, and the boundary burst problem
 - [ ] `If-None-Match` versus `If-Match` — caching versus lost-update prevention
+- [ ] Which directive binds the browser, which binds the CDN, and what `private` protects
+- [ ] Why `no-cache` and `no-store` are not synonyms
+- [ ] When a `304` saves work and when it only saves bandwidth
+- [ ] Why the version check and the write have to be the same statement
+- [ ] What a client should do with a `412`, and why auto-retrying is last-write-wins
+- [ ] Why a hot key expiring is a load spike, and what jitter and single flight each fix
 - [ ] Why webhook delivery is at-least-once and what that obliges the consumer to do
 - [ ] Two defensible answers for bulk partial failure
 - [ ] One real cost of GraphQL and one real cost of gRPC

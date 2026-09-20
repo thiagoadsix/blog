@@ -396,32 +396,52 @@ path, then cache.
 
 ## Practice
 
-**Q: A plan shows `rows=12` estimated and `rows=180000` actual on a seq scan feeding a nested loop. What do you do first?**
+<QA>
+
+A plan shows `rows=12` estimated and `rows=180000` actual on a seq scan feeding a nested loop. What do you do first?
 
 Not add an index — run `ANALYZE` on the table and look again. The plan choice was driven by
 the estimate; a correct estimate will likely produce a hash join on its own. If the estimate
 is still wrong after analyze, look for correlated columns and add extended statistics.
 
-**Q: An `Index Scan` reports `loops=48210`. What is the node's total cost?**
+</QA>
+
+<QA>
+
+An `Index Scan` reports `loops=48210`. What is the node's total cost?
 
 `actual time × loops`. A node that takes 0.01 ms per loop and runs 48,210 times spent about
 480 ms, not 0.01 ms.
 
-**Q: `WHERE created_at::date = CURRENT_DATE` is not using the index on `created_at`. Why?**
+</QA>
+
+<QA>
+
+`WHERE created_at::date = CURRENT_DATE` is not using the index on `created_at`. Why?
 
 The cast wraps the column, so the index on the raw column cannot be seeked. Rewrite as a
 half-open range, or build an index on the expression.
 
-**Q: p99 latency doubled, mean query time in `pg_stat_statements` is unchanged. Where do you look?**
+</QA>
+
+<QA>
+
+p99 latency doubled, mean query time in `pg_stat_statements` is unchanged. Where do you look?
 
 Not at queries. Connection pool saturation, lock waits, or CPU contention — time spent
 before or around the query rather than inside it.
 
-**Q: Why might a query be slow only in production, with the same data volume as your load-test database?**
+</QA>
+
+<QA>
+
+Why might a query be slow only in production, with the same data volume as your load-test database?
 
 Concurrency. Lock contention, pool limits, cache pressure from other workloads, and
 autovacuum falling behind under write load do not appear when your query is the only one
 running.
+
+</QA>
 
 ## Recall checklist
 

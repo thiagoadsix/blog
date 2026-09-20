@@ -427,35 +427,55 @@ minutes" is a plan; "keep an eye on it" is not.
 
 ## Practice
 
-**Q: You add a column and run `ALTER TABLE orders ADD COLUMN x text;`. It hangs. Why, and what do you do?**
+<QA>
+
+You add a column and run `ALTER TABLE orders ADD COLUMN x text;`. It hangs. Why, and what do you do?
 
 It is waiting for `ACCESS EXCLUSIVE`, blocked by an open transaction holding a lock on the
 table. Worse, every query arriving after it is now queued behind it. Cancel it immediately,
 find the blocker with `pg_blocking_pids`, then retry with `lock_timeout` set.
 
-**Q: Why can't `CREATE INDEX CONCURRENTLY` run inside a transaction?**
+</QA>
+
+<QA>
+
+Why can't `CREATE INDEX CONCURRENTLY` run inside a transaction?
 
 It needs multiple passes over the table with commits in between so that concurrent writes
 stay visible to it. That also means a failure leaves a partially built, invalid index that
 you must drop explicitly.
 
-**Q: A rename shipped as one migration plus one deploy. What is the window of breakage?**
+</QA>
+
+<QA>
+
+A rename shipped as one migration plus one deploy. What is the window of breakage?
 
 From the moment the migration commits until the last old instance is replaced. During a
 rolling deploy, old instances are still serving traffic and querying a column that no longer
 exists. Every one of their requests fails.
 
-**Q: Your backfill has been running for 40 minutes and replication lag is climbing. What now?**
+</QA>
+
+<QA>
+
+Your backfill has been running for 40 minutes and replication lag is climbing. What now?
 
 Stop it. It is resumable by design, so nothing is lost. Reduce the batch size, increase the
 pause, and restart. Lag is a read-availability problem and it affects users who are not
 involved in your migration at all.
 
-**Q: Why write the `NOT VALID` constraint first instead of just validating up front?**
+</QA>
+
+<QA>
+
+Why write the `NOT VALID` constraint first instead of just validating up front?
 
 `NOT VALID` is instant and immediately protects against *new* bad rows, while `VALIDATE`
 does the slow scan under a lock that does not block reads or writes. Splitting them turns
 one long hard-locked operation into one instant operation plus one background one.
+
+</QA>
 
 ## Recall checklist
 
